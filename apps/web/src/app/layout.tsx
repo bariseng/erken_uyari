@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import AuthProvider from "@/components/AuthProvider";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "GeoForce — Geoteknik Hesap Platformu",
@@ -9,10 +11,14 @@ export const metadata: Metadata = {
   keywords: ["geoteknik", "taşıma kapasitesi", "sıvılaşma", "TBDY 2018", "zemin mekaniği"],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className="min-h-screen antialiased">
+        <NextIntlClientProvider messages={messages}>
         <AuthProvider>
         <Navbar />
         <main>{children}</main>
@@ -23,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </footer>
         </AuthProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
