@@ -62,7 +62,7 @@ export default function RaporPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowRestorePrompt(false)}
+                onClick={() => { store.reset(); setShowRestorePrompt(false); }}
                 className="px-3 py-1.5 text-sm rounded-lg bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-700"
               >
                 Sıfırla

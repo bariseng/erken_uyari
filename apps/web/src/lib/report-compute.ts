@@ -20,6 +20,10 @@ import {
   proctorAnalysis,
   mohrCircle,
   pileCapacityStatic, pileCapacitySPT,
+  dynamicCompaction, stoneColumn, preloading,
+  calculateVs30, siteResponseAnalysis,
+  boussinesqPoint, boussinesqRect, cbrCorrelations,
+  gravityWallStability, reinforcedSoilDesign,
 } from "@geoforce/engine";
 import type { ModuleKey } from "./report-store";
 import type { ChartData } from "./report-charts";
@@ -59,6 +63,14 @@ export function computeModule(moduleKey: ModuleKey, method: string, inputs: Inpu
         return computeStressFoundation(method, inputs);
       case "siniflandirma":
         return computeClassification(method, inputs);
+      case "zemin-iyilestirme":
+        return computeSoilImprovement(method, inputs);
+      case "istinat-duvari":
+        return computeRetainingWallStability(method, inputs);
+      case "saha-tepki":
+        return computeSiteResponse(method, inputs);
+      case "gerilme-dagilimi":
+        return computeStressDistribution(method, inputs);
       default:
         return { ...inputs, _note: "Bu modül için otomatik hesaplama henüz bağlanmadı. Sonuçları manuel girebilirsiniz." };
     }
@@ -363,6 +375,107 @@ function computeClassification(method: string, i: Inputs) {
     gravel, sand, fines, LL, PL, PI, USCS,
     method: method.includes("AASHTO") ? "AASHTO" : method.includes("TBDY") ? "TBDY 2018" : "USCS",
   };
+}
+
+// ─── Zemin İyileştirme ───
+function computeSoilImprovement(method: string, i: Inputs) {
+  if (method.includes("Dinamik")) {
+    return flatten(dynamicCompaction({
+      weight: n(i, "weight", 15),
+      dropHeight: n(i, "dropHeight", 15),
+      targetDepth: n(i, "targetDepth", 8),
+      soilType: (i.soilType as any) || "granular",
+    }));
+  }
+  if (method.includes("Taş") || method.includes("Kolon")) {
+    return flatten(stoneColumn({
+      diameter: n(i, "diameter", 0.8),
+      spacing: n(i, "spacing", 2),
+      pattern: (i.pattern as any) || "triangular",
+      columnFrictionAngle: n(i, "columnFrictionAngle", 40),
+      soilCu: n(i, "soilCu", 30),
+      soilGamma: n(i, "soilGamma", 18),
+      appliedStress: n(i, "appliedStress", 100),
+      length: n(i, "length", 10),
+    }));
+  }
+  if (method.includes("Ön") || method.includes("Preloading")) {
+    return flatten(preloading({
+      targetSettlement: n(i, "targetSettlement", 0.1),
+      cv: n(i, "cv", 2),
+      drainagePath: n(i, "drainagePath", 2),
+      effectiveStress: n(i, "effectiveStress", 50),
+      Cc: n(i, "Cc", 0.3),
+      layerThickness: n(i, "layerThickness", 5),
+      e0: n(i, "e0", 0.8),
+      targetTime: n(i, "targetTime", 1),
+    }));
+  }
+  return { _note: "Yöntem seçili değil" };
+}
+
+// ─── İstinat Duvarı Stabilitesi ───
+function computeRetainingWallStability(method: string, i: Inputs) {
+  if (method.includes("Ağırlık") || method.includes("Gravity")) {
+    return flatten(gravityWallStability({
+      height: n(i, "height", 4),
+      baseWidth: n(i, "baseWidth", 2.5),
+      topWidth: n(i, "topWidth", 0.5),
+      gammaWall: n(i, "gammaWall", 24),
+      gammaFill: n(i, "gammaFill", 18),
+      frictionAngle: n(i, "frictionAngle", 30),
+      cohesion: n(i, "cohesion", 0),
+      bearingCapacity: n(i, "bearingCapacity", 200),
+      surcharge: n(i, "surcharge", 10),
+    }));
+  }
+  if (method.includes("Donatılı") || method.includes("Reinforced")) {
+    return flatten(reinforcedSoilDesign({
+      height: n(i, "height", 6),
+      gamma: n(i, "gamma", 18),
+      frictionAngle: n(i, "frictionAngle", 32),
+      surcharge: n(i, "surcharge", 10),
+      geogridStrength: n(i, "geogridStrength", 100),
+      verticalSpacing: n(i, "verticalSpacing", 0.6),
+    }));
+  }
+  return { _note: "Yöntem seçili değil" };
+}
+
+// ─── Saha Tepki ───
+function computeSiteResponse(method: string, i: Inputs) {
+  const layers = i.layers || [
+    { thickness: n(i, "thickness", 10), vs: n(i, "Vs", 200), gamma: n(i, "density", 18) },
+  ];
+  
+  if (method.includes("Vs30")) {
+    return flatten(calculateVs30(layers));
+  }
+  if (method.includes("Transfer")) {
+    return flatten(siteResponseAnalysis({
+      layers,
+      rockPGA: n(i, "rockPGA", 0.3),
+      magnitude: n(i, "magnitude", 7.5),
+    }));
+  }
+  return { _note: "Yöntem seçili değil" };
+}
+
+// ─── Gerilme Dağılımı & CBR ───
+function computeStressDistribution(method: string, i: Inputs) {
+  if (method.includes("Boussinesq")) {
+    return flatten(boussinesqPoint({
+      load: n(i, "load", 100),
+      depth: n(i, "depth", 3),
+      radialDistance: n(i, "radialDistance", 1),
+    }));
+  }
+  if (method.includes("CBR")) {
+    return flatten(cbrCorrelations({
+      cbr: n(i, "cbr", 15),
+    }));
+  }
+  return { _note: "Yöntem seçili değil" };
 }
 
 // ─── Chart Data Üretici ───
