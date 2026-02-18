@@ -28,8 +28,14 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+/* ─── Bileşenler ─── */
+
 .card {
-  @apply rounded-xl border bg-[var(--card)] border-[var(--card-border)] shadow-sm;
+  @apply rounded-xl border bg-[var(--card)] border-[var(--card-border)] shadow-sm transition-shadow;
+}
+
+.card-hover {
+  @apply card hover:shadow-md hover:border-brand-300 dark:hover:border-brand-700 transition-all duration-200;
 }
 
 .input-field {
@@ -40,12 +46,73 @@ body {
 
 .btn-primary {
   @apply inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-    hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/40
-    transition-colors;
+    hover:bg-brand-700 active:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-500/40
+    transition-all duration-150 shadow-sm hover:shadow;
 }
 
 .btn-secondary {
   @apply inline-flex items-center justify-center rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-2 text-sm font-medium
     hover:bg-earth-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-brand-500/40
+    transition-all duration-150;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)]
+    hover:bg-earth-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)]
     transition-colors;
+}
+
+/* ─── Animasyonlar ─── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* ─── Scrollbar ─── */
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 2px;
+}
+
+/* ─── Gradient ─── */
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-brand-400;
+}
+
+.gradient-bg {
+  @apply bg-gradient-to-br from-brand-50 via-[var(--background)] to-earth-50 dark:from-brand-900/20 dark:via-[var(--background)] dark:to-neutral-900;
 }
