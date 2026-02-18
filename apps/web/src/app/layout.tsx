@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import AuthProvider from "@/components/AuthProvider";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -20,17 +21,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossOrigin="anonymous" />
       </head>
-      <body className="min-h-screen antialiased">
+      <body className="min-h-screen antialiased flex flex-col">
         <NextIntlClientProvider messages={messages}>
         <AuthProvider>
         <Navbar />
-        <main>{children}</main>
-        <footer className="border-t border-[var(--card-border)] mt-16">
-          <div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-[var(--muted)]">
-            <p>GeoForce — Açık Kaynak Geoteknik Hesap Platformu</p>
-            <p className="mt-1">© 2026 GeoForce. MIT Lisansı ile yayınlanmıştır.</p>
-          </div>
-        </footer>
+        <main className="flex-1">{children}</main>
+        <Footer />
         </AuthProvider>
         </NextIntlClientProvider>
       </body>
