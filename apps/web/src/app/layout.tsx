@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import AuthProvider from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
   title: "GeoForce — Geoteknik Hesap Platformu",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="tr" suppressHydrationWarning>
       <body className="min-h-screen antialiased">
+        <AuthProvider>
         <Navbar />
         <main>{children}</main>
         <footer className="border-t border-[var(--card-border)] mt-16">
@@ -20,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <p className="mt-1">© 2026 GeoForce. MIT Lisansı ile yayınlanmıştır.</p>
           </div>
         </footer>
+        </AuthProvider>
       </body>
     </html>
   );
