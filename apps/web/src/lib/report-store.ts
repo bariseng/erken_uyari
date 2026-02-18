@@ -4,6 +4,7 @@
  */
 import { create } from "zustand";
 import type { ReportProject } from "./report-generator";
+import type { SoilLayer } from "@/components/SoilLayerManager";
 
 export type ModuleKey =
   | "tasima-kapasitesi"
@@ -59,6 +60,8 @@ interface ReportStore {
   step: number;
   project: ReportProject;
   sections: ReportSection[];
+  soilLayers: SoilLayer[];
+  waterTableDepth: number;
   setStep: (s: number) => void;
   updateProject: (p: Partial<ReportProject>) => void;
   addSection: (moduleKey: ModuleKey) => void;
@@ -66,6 +69,8 @@ interface ReportStore {
   updateSectionInputs: (id: string, inputs: Record<string, number | string>) => void;
   updateSectionMethod: (id: string, method: string) => void;
   updateSectionResults: (id: string, results: Record<string, any>) => void;
+  setSoilLayers: (layers: SoilLayer[]) => void;
+  setWaterTableDepth: (d: number) => void;
   reset: () => void;
 }
 
@@ -86,6 +91,8 @@ export const useReportStore = create<ReportStore>((set) => ({
   step: 0,
   project: { ...defaultProject },
   sections: [],
+  soilLayers: [],
+  waterTableDepth: 3,
   setStep: (step) => set({ step }),
   updateProject: (p) => set((s) => ({ project: { ...s.project, ...p } })),
   addSection: (moduleKey) =>
@@ -115,5 +122,7 @@ export const useReportStore = create<ReportStore>((set) => ({
     set((s) => ({
       sections: s.sections.map((sec) => (sec.id === id ? { ...sec, results, computed: true } : sec)),
     })),
-  reset: () => set({ step: 0, project: { ...defaultProject }, sections: [] }),
+  setSoilLayers: (soilLayers) => set({ soilLayers }),
+  setWaterTableDepth: (waterTableDepth) => set({ waterTableDepth }),
+  reset: () => set({ step: 0, project: { ...defaultProject }, sections: [], soilLayers: [], waterTableDepth: 3 }),
 }));
