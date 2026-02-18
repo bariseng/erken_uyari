@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import UserMenu from "./UserMenu";
 import LanguageSwitcher from "./LanguageSwitcher";
+import ThemeToggle from "./ThemeToggle";
 
 const modules = [
   { href: "/hesapla/siniflandirma", icon: "🧪", label: "Zemin Sınıflandırma" },
@@ -45,7 +46,8 @@ export default function Navbar() {
           <Link href="/rapor" className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${pathname === "/rapor" ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30" : "hover:bg-earth-100 dark:hover:bg-neutral-800"}`}>
             📄 Rapor
           </Link>
-          <div className="ml-2 border-l border-[var(--card-border)] pl-3 flex items-center gap-2">
+          <div className="ml-2 border-l border-[var(--card-border)] pl-3 flex items-center gap-1">
+            <ThemeToggle />
             <LanguageSwitcher />
             <UserMenu />
           </div>
