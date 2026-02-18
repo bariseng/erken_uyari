@@ -1,0 +1,23 @@
+{
+  "name": "@geoforce/engine",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./bearing-capacity": { "import": "./dist/bearing-capacity/index.js", "types": "./dist/bearing-capacity/index.d.ts" },
+    "./classification": { "import": "./dist/classification/index.js", "types": "./dist/classification/index.d.ts" },
+    "./lateral-pressure": { "import": "./dist/lateral-pressure/index.js", "types": "./dist/lateral-pressure/index.d.ts" },
+    "./seismic": { "import": "./dist/seismic/index.js", "types": "./dist/seismic/index.d.ts" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}
