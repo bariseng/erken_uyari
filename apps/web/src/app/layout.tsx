@@ -17,6 +17,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-screen antialiased">
         <NextIntlClientProvider messages={messages}>
         <AuthProvider>

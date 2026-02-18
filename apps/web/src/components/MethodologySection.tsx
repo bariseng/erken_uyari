@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Formula from "./Formula";
 
 export interface FormulaItem {
   name: string;
@@ -26,6 +27,27 @@ export interface MethodologyData {
   references: string[];
   standards?: string[];
   notes?: string[];
+}
+
+/** Basit formül stringini KaTeX'e çevirir */
+function toTex(f: string): string {
+  return f
+    .replace(/\*\*/g, "^")
+    .replace(/\*/g, " \\cdot ")
+    .replace(/gamma/g, "\\gamma")
+    .replace(/phi/g, "\\varphi")
+    .replace(/delta/g, "\\delta")
+    .replace(/alpha/g, "\\alpha")
+    .replace(/beta/g, "\\beta")
+    .replace(/sigma/g, "\\sigma")
+    .replace(/pi/g, "\\pi")
+    .replace(/sqrt\(([^)]+)\)/g, "\\sqrt{$1}")
+    .replace(/tan\(/g, "\\tan(")
+    .replace(/cos\(/g, "\\cos(")
+    .replace(/sin\(/g, "\\sin(")
+    .replace(/cot\(/g, "\\cot(")
+    .replace(/log10/g, "\\log_{10}")
+    .replace(/e\^/g, "e^");
 }
 
 export default function MethodologySection({ data }: { data: MethodologyData }) {
@@ -60,10 +82,12 @@ export default function MethodologySection({ data }: { data: MethodologyData }) 
                 <div className="mt-3 space-y-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Formüller</p>
                   {m.formulas.map((f, fi) => (
-                    <div key={fi} className="rounded-lg bg-earth-50 dark:bg-neutral-800 p-3 font-mono text-xs">
-                      <p className="font-semibold text-[var(--foreground)]">{f.name}:</p>
-                      <p className="mt-1 text-brand-700 dark:text-brand-400">{f.formula}</p>
-                      {f.description && <p className="mt-1 text-[var(--muted)] font-sans">{f.description}</p>}
+                    <div key={fi} className="rounded-lg bg-earth-50 dark:bg-neutral-800 p-3">
+                      <p className="font-semibold text-xs text-[var(--foreground)]">{f.name}:</p>
+                      <div className="mt-1 overflow-x-auto">
+                        <Formula tex={toTex(f.formula)} display />
+                      </div>
+                      {f.description && <p className="mt-1 text-[var(--muted)] text-xs">{f.description}</p>}
                     </div>
                   ))}
                 </div>
