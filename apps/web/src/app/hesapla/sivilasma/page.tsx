@@ -107,7 +107,7 @@ export default function SivilasmaPage() {
                 <span className="text-xs font-medium">Derinlik: {l.depth}m</span>
                 <button onClick={() => removeLayer(l.id)} className="text-xs text-red-500 hover:text-red-700">✕</button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <MiniField label="z (m)" value={l.depth} onChange={v => updateLayer(l.id, "depth", v)} />
                 <MiniField label="N (SPT)" value={l.N ?? 0} onChange={v => updateLayer(l.id, "N", v)} />
                 <MiniField label="FC (%)" value={l.finesContent ?? 0} onChange={v => updateLayer(l.id, "finesContent", v)} />

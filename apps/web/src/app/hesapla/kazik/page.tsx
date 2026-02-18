@@ -138,7 +138,7 @@ function StaticForm() {
               <span className="text-xs font-medium">{l.depthTop}-{l.depthBottom}m ({l.soilType === "clay" ? "Kil" : "Kum"})</span>
               <button onClick={() => removeLayer(l.id)} className="text-xs text-red-500">✕</button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <MiniField label="Üst (m)" value={l.depthTop} onChange={v => updateLayer(l.id, "depthTop", v)} />
               <MiniField label="Alt (m)" value={l.depthBottom} onChange={v => updateLayer(l.id, "depthBottom", v)} />
               <div>
@@ -202,7 +202,7 @@ function SPTForm() {
               <span className="text-xs font-medium">{l.depthTop}-{l.depthBottom}m</span>
               <button onClick={() => removeLayer(l.id)} className="text-xs text-red-500">✕</button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <MiniField label="Üst (m)" value={l.depthTop} onChange={v => updateLayer(l.id, "depthTop", v)} />
               <MiniField label="Alt (m)" value={l.depthBottom} onChange={v => updateLayer(l.id, "depthBottom", v)} />
               <MiniField label="N (SPT)" value={l.N ?? 0} onChange={v => updateLayer(l.id, "N", v)} />
@@ -359,6 +359,7 @@ function PileResultCard({ result }: { result: PileCapacityResult }) {
       {result.layerDetails.length > 0 && (
         <div className="mt-4">
           <h3 className="text-sm font-medium mb-2">Tabaka Katkıları</h3>
+          <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead><tr className="border-b border-[var(--card-border)]">
               <th className="text-left py-1">Derinlik</th><th className="text-left py-1">Zemin</th><th className="text-right py-1">qs (kPa)</th><th className="text-right py-1">Katkı (kN)</th>
@@ -369,6 +370,7 @@ function PileResultCard({ result }: { result: PileCapacityResult }) {
               </tr>
             ))}</tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

@@ -194,3 +194,78 @@ export function pvdAnalysis(input: PVDInput): PVDResult {
     comparison,
   };
 }
+
+// ─── Cv Tahmini — Likit Limitten (US Navy, 1982) ───
+
+export interface CvFromLLInput {
+  /** Likit limit LL (%) */
+  liquidLimit: number;
+}
+
+export interface CvFromLLResult {
+  method: string;
+  /** Tahmini Cv (m²/yıl) */
+  cv: number;
+  /** Cv aralığı alt sınır (m²/yıl) */
+  cvMin: number;
+  /** Cv aralığı üst sınır (m²/yıl) */
+  cvMax: number;
+  /** Zemin sınıfı açıklaması */
+  description: string;
+}
+
+/**
+ * US Navy (1982) korelasyonu: Cv = f(LL)
+ * Logaritmik interpolasyon ile Cv tahmini
+ */
+export function cvFromLiquidLimit(input: CvFromLLInput): CvFromLLResult {
+  const { liquidLimit: LL } = input;
+
+  // Referans noktaları: [LL, cvMin, cvMax]
+  // LL < 30 → ~10, LL 30-60 → 1-3, LL 60-90 → 0.3-1, LL > 90 → 0.1-0.3
+  const points: [number, number, number][] = [
+    [20, 8, 15],
+    [30, 3, 10],
+    [60, 1, 3],
+    [90, 0.3, 1],
+    [120, 0.1, 0.3],
+  ];
+
+  let cvMin: number, cvMax: number, description: string;
+
+  if (LL <= points[0][0]) {
+    cvMin = points[0][1];
+    cvMax = points[0][2];
+    description = "Düşük plastisiteli zemin (LL < 30)";
+  } else if (LL >= points[points.length - 1][0]) {
+    cvMin = points[points.length - 1][1];
+    cvMax = points[points.length - 1][2];
+    description = "Çok yüksek plastisiteli zemin (LL > 90)";
+  } else {
+    // Logaritmik interpolasyon
+    let i = 0;
+    for (; i < points.length - 1; i++) {
+      if (LL >= points[i][0] && LL < points[i + 1][0]) break;
+    }
+    const [ll1, min1, max1] = points[i];
+    const [ll2, min2, max2] = points[i + 1];
+    const ratio = (LL - ll1) / (ll2 - ll1);
+    cvMin = Math.exp(Math.log(min1) + ratio * (Math.log(min2) - Math.log(min1)));
+    cvMax = Math.exp(Math.log(max1) + ratio * (Math.log(max2) - Math.log(max1)));
+
+    if (LL < 30) description = "Düşük plastisiteli zemin (LL < 30)";
+    else if (LL < 60) description = "Orta plastisiteli zemin (LL 30-60)";
+    else if (LL < 90) description = "Yüksek plastisiteli zemin (LL 60-90)";
+    else description = "Çok yüksek plastisiteli zemin (LL > 90)";
+  }
+
+  const cv = Math.sqrt(cvMin * cvMax); // geometrik ortalama
+
+  return {
+    method: "US Navy (1982) — Cv Tahmini (Likit Limitten)",
+    cv: round(cv, 2),
+    cvMin: round(cvMin, 2),
+    cvMax: round(cvMax, 2),
+    description,
+  };
+}

@@ -152,6 +152,60 @@ const MODULE_FIELDS: Record<ModuleKey, FieldDef[]> = {
     { key: "Vs", label: "Tabaka Vs", unit: "m/s", default: 200, min: 50 },
     { key: "density", label: "Yoğunluk ρ", unit: "kg/m³", default: 1800, min: 1000, max: 2500 },
   ],
+  "braced-excavation": [
+    { key: "excavationDepth", label: "Kazı derinliği H", unit: "m", default: 8, min: 2 },
+    { key: "gamma", label: "Birim hacim ağırlık γ", unit: "kN/m³", default: 18, min: 10, max: 25 },
+    { key: "cohesion", label: "Kohezyon c", unit: "kPa", default: 25, min: 0 },
+    { key: "frictionAngle", label: "Sürtünme açısı φ", unit: "°", default: 28, min: 0, max: 50 },
+    { key: "strutSpacing", label: "Destek aralığı", unit: "m", default: 3, min: 1, max: 6 },
+  ],
+  "pad-footing": [
+    { key: "load", label: "Kolon yükü P", unit: "kN", default: 500, min: 10 },
+    { key: "depth", label: "Temel derinliği Df", unit: "m", default: 1.5, min: 0.3, step: 0.1 },
+    { key: "allowableBearing", label: "İzin verilebilir qa", unit: "kPa", default: 150, min: 10 },
+    { key: "gamma", label: "Birim hacim ağırlık γ", unit: "kN/m³", default: 18, min: 10, max: 25 },
+    { key: "concreteGrade", label: "Beton sınıfı", unit: "MPa", default: 25, min: 16, max: 50 },
+  ],
+  "soil-properties-db": [
+    { key: "soilType", label: "Zemin tipi", unit: "-", default: "CL", type: "select", options: [
+      { value: "CL", label: "CL - Düşük plastisiteli kil" },
+      { value: "CH", label: "CH - Yüksek plastisiteli kil" },
+      { value: "ML", label: "ML - Düşük plastisiteli silt" },
+      { value: "SP", label: "SP - Kötü derecelenmiş kum" },
+      { value: "SW", label: "SW - İyi derecelenmiş kum" },
+      { value: "GP", label: "GP - Kötü derecelenmiş çakıl" },
+    ]},
+    { key: "N60", label: "SPT N60", unit: "-", default: 15, min: 0, max: 100 },
+  ],
+  "destekli-kazi": [
+    { key: "excavationDepth", label: "Kazı derinliği", unit: "m", default: 8, min: 1, step: 0.5 },
+    { key: "gamma", label: "Birim hacim ağırlık γ", unit: "kN/m³", default: 18, min: 10, max: 25 },
+    { key: "cohesion", label: "Kohezyon c", unit: "kPa", default: 10, min: 0 },
+    { key: "frictionAngle", label: "İçsel sürtünme açısı φ", unit: "°", default: 28, min: 0, max: 45 },
+    { key: "surcharge", label: "Sürşarj yükü", unit: "kPa", default: 10, min: 0 },
+    { key: "strutSpacing", label: "Destek aralığı", unit: "m", default: 3, min: 1, max: 6 },
+  ],
+  "tekil-temel": [
+    { key: "columnLoad", label: "Kolon yükü", unit: "kN", default: 500, min: 10 },
+    { key: "columnWidth", label: "Kolon genişliği", unit: "m", default: 0.4, min: 0.2, step: 0.05 },
+    { key: "columnLength", label: "Kolon uzunluğu", unit: "m", default: 0.4, min: 0.2, step: 0.05 },
+    { key: "allowableBearing", label: "İzin verilebilir qa", unit: "kPa", default: 150, min: 10 },
+    { key: "concreteGrade", label: "Beton sınıfı fck", unit: "MPa", default: 25, min: 16, max: 50 },
+    { key: "steelGrade", label: "Donatı akma fyk", unit: "MPa", default: 420, min: 220, max: 500 },
+  ],
+  "zemin-ozellik-db": [
+    { key: "soilType", label: "Zemin tipi (USCS)", unit: "-", default: "CL", type: "select", options: [
+      { value: "CL", label: "CL - Düşük plastisiteli kil" },
+      { value: "CH", label: "CH - Yüksek plastisiteli kil" },
+      { value: "ML", label: "ML - Düşük plastisiteli silt" },
+      { value: "SP", label: "SP - Kötü derecelenmiş kum" },
+      { value: "SW", label: "SW - İyi derecelenmiş kum" },
+      { value: "GP", label: "GP - Kötü derecelenmiş çakıl" },
+      { value: "GW", label: "GW - İyi derecelenmiş çakıl" },
+    ]},
+    { key: "N60", label: "SPT N60", unit: "-", default: 15, min: 0, max: 100 },
+    { key: "depth", label: "Derinlik", unit: "m", default: 5, min: 0 },
+  ],
 };
 
 export function getModuleFields(moduleKey: ModuleKey): FieldDef[] {

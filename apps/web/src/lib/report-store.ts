@@ -24,7 +24,13 @@ export type ModuleKey =
   | "gerilme-temel"
   | "gerilme-dagilimi"
   | "istinat-duvari"
-  | "saha-tepki";
+  | "saha-tepki"
+  | "braced-excavation"
+  | "pad-footing"
+  | "soil-properties-db"
+  | "destekli-kazi"
+  | "tekil-temel"
+  | "zemin-ozellik-db";
 
 export const MODULE_META: Record<ModuleKey, { icon: string; label: string; methods: string[] }> = {
   "tasima-kapasitesi": { icon: "🏗️", label: "Taşıma Kapasitesi", methods: ["Terzaghi (1943)", "Meyerhof (1963)", "Hansen (1970)", "Vesic (1973)", "Tümü"] },
@@ -45,6 +51,12 @@ export const MODULE_META: Record<ModuleKey, { icon: string; label: string; metho
   "gerilme-dagilimi": { icon: "📐", label: "Gerilme Dağılımı", methods: ["Boussinesq", "CBR"] },
   "istinat-duvari": { icon: "🧱", label: "İstinat Duvarı", methods: ["Ağırlık Duvarı", "Donatılı Zemin"] },
   "saha-tepki": { icon: "📡", label: "Saha Tepki", methods: ["Vs30 Büyütme", "Transfer Fonksiyonu"] },
+  "braced-excavation": { icon: "🏗️", label: "Destekli Kazı", methods: ["Peck (1969)", "FHWA"] },
+  "pad-footing": { icon: "🧱", label: "Tekil Temel", methods: ["ACI 318", "TS 500"] },
+  "soil-properties-db": { icon: "📚", label: "Zemin Özellikleri DB", methods: ["Korelasyon Tablosu"] },
+  "destekli-kazi": { icon: "🏗️", label: "Destekli Kazı", methods: ["Peck (1969)"] },
+  "tekil-temel": { icon: "🧱", label: "Tekil Temel Tasarım", methods: ["Zımbalama + Stabilite"] },
+  "zemin-ozellik-db": { icon: "📋", label: "Zemin Özellik Tahmini", methods: ["USCS+SPT Korelasyon"] },
 };
 
 export interface ReportSection {

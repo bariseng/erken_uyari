@@ -153,7 +153,7 @@ export default function YanalBasincPage() {
           {/* Katsayılar */}
           <div className="card p-6">
             <h2 className="font-semibold text-lg mb-4">{result.method} — Sonuçlar</h2>
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-center">
                 <p className="text-xs text-[var(--muted)]">Aktif (Ka)</p>
                 <p className="text-2xl font-bold text-red-600">{result.Ka}</p>

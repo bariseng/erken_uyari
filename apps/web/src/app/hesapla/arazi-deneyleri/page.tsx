@@ -129,7 +129,7 @@ function StressForm() {
               <span className="text-xs font-medium">h={l.thickness}m</span>
               <button onClick={() => removeLayer(l.id)} className="text-xs text-red-500">✕</button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <MiniField label="h (m)" value={l.thickness} onChange={v => updateLayer(l.id, "thickness", v)} />
               <MiniField label="γ (kN/m³)" value={l.gamma} onChange={v => updateLayer(l.id, "gamma", v)} />
               <MiniField label="γsat" value={l.gammaSat ?? l.gamma} onChange={v => updateLayer(l.id, "gammaSat", v)} />

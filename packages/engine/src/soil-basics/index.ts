@@ -211,3 +211,58 @@ export function proctorAnalysis(input: ProctorInput): ProctorResult {
     range95: { wMin: w95Min, wMax: w95Max, gammaD95: gd95 },
   };
 }
+
+// ─── Kil Efektif Sürtünme Açısı Tahmini ───
+
+export interface ClayFrictionInput {
+  /** Plastisite indeksi PI (%) */
+  plasticityIndex: number;
+  /** Likit limit LL (%) */
+  liquidLimit: number;
+}
+
+export interface ClayFrictionResult {
+  method: string;
+  /** Tahmini efektif sürtünme açısı φ' (derece) */
+  frictionAngle: number;
+  /** Kullanılan yöntem açıklaması */
+  description: string;
+  /** Beklenen aralık (derece) */
+  range: { min: number; max: number };
+}
+
+/**
+ * Kil efektif sürtünme açısı tahmini — PI'den
+ * Sorensen & Okkels (2013) yaklaşımı: φ' = 43 - 10·ln(PI)
+ * Kenney (1959), Bjerrum & Simons (1960) referansları
+ */
+export function clayEffectiveFriction(input: ClayFrictionInput): ClayFrictionResult {
+  const { plasticityIndex: PI, liquidLimit: LL } = input;
+
+  // Sorensen & Okkels (2013) — ana formül
+  const phi = 43 - 10 * Math.log(PI);
+
+  // Aralık tahmini: ±3-5 derece (PI'ye bağlı belirsizlik)
+  const spread = PI < 20 ? 3 : PI < 50 ? 4 : 5;
+  const phiMin = Math.max(phi - spread, 10);
+  const phiMax = Math.min(phi + spread, 40);
+
+  // Yöntem seçimi açıklaması
+  let description: string;
+  if (PI < 15) {
+    description = "Düşük plastisiteli kil — φ' yüksek, kumsu davranış beklenir";
+  } else if (PI < 40) {
+    description = "Orta plastisiteli kil — Kenney (1959) ve Bjerrum & Simons (1960) ile uyumlu";
+  } else if (PI < 75) {
+    description = "Yüksek plastisiteli kil — φ' düşük, rezidüel dayanım kontrol edilmeli";
+  } else {
+    description = "Çok yüksek plastisiteli kil — rezidüel dayanım kritik, φ'r ayrıca değerlendirilmeli";
+  }
+
+  return {
+    method: "Sorensen & Okkels (2013) — φ' = 43 - 10·ln(PI)",
+    frictionAngle: round(Math.max(phi, 8), 1),
+    description,
+    range: { min: round(phiMin, 1), max: round(phiMax, 1) },
+  };
+}

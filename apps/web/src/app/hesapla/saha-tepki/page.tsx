@@ -104,7 +104,7 @@ export default function SahaTepkiPage() {
                 <span className="text-xs font-medium">Tabaka {i + 1}</span>
                 <button onClick={() => removeLayer(l.id)} className="text-xs text-red-500">✕</button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <MiniField label="Kalınlık (m)" value={l.thickness} onChange={v => updateLayer(l.id, "thickness", v)} />
                 <MiniField label="Vs (m/s)" value={l.vs} onChange={v => updateLayer(l.id, "vs", v)} />
                 <MiniField label="γ (kN/m³)" value={l.gamma} onChange={v => updateLayer(l.id, "gamma", v)} />
@@ -156,6 +156,7 @@ export default function SahaTepkiPage() {
             <div className="p-3 rounded-lg bg-earth-50 dark:bg-neutral-800 text-sm font-mono mb-3">
               <p>Vs30 = 30 / Σ(hi/Vsi) = 30 / {vs30Result.totalTravelTime} = <b>{vs30Result.vs30} m/s</b></p>
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-[var(--card-border)]">
                 <th className="text-left py-1">Derinlik (m)</th><th className="text-right py-1">Kalınlık (m)</th><th className="text-right py-1">Vs (m/s)</th><th className="text-right py-1">hi/Vsi (s)</th>
@@ -166,6 +167,7 @@ export default function SahaTepkiPage() {
                 </tr>
               ))}</tbody>
             </table>
+            </div>
           </div>
 
           {/* Recharts Transfer Fonksiyonu */}

@@ -125,7 +125,7 @@ export default function SevStabilitesiPage() {
           {results.length > 1 && (
             <div className="card p-6">
               <h2 className="font-semibold text-lg mb-4">Karşılaştırma</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {results.map(r => (
                   <div key={r.method} className="rounded-lg border border-[var(--card-border)] p-4 text-center">
                     <p className="text-xs text-[var(--muted)]">{r.method}</p>

@@ -237,6 +237,226 @@ export function pileCapacitySPT(input: PileInput): PileCapacityResult {
 
 // ─── Broms Yanal Yük ───
 
+// ─── Kaya Soketi Kapasitesi — Zhang & Einstein (1998) ───
+
+export interface RockSocketInput {
+  /** Soket çapı (m) */
+  socketDiameter: number;
+  /** Soket uzunluğu (m) */
+  socketLength: number;
+  /** Kaya tek eksenli basınç dayanımı UCS (MPa) */
+  rockUCS: number;
+  /** Rock Quality Designation (%) */
+  RQD: number;
+  /** Güvenlik katsayısı — varsayılan 3.0 */
+  safetyFactor?: number;
+}
+
+export interface RockSocketResult {
+  method: string;
+  /** Birim uç direnci qp (MPa) */
+  unitTipResistance: number;
+  /** Birim çevre sürtünmesi qs (MPa) */
+  unitShaftResistance: number;
+  /** Uç direnci Qp (kN) */
+  tipCapacity: number;
+  /** Çevre sürtünmesi Qs (kN) */
+  shaftCapacity: number;
+  /** Nihai kapasite Qu (kN) */
+  ultimate: number;
+  /** İzin verilebilir kapasite Qa (kN) */
+  allowable: number;
+  /** RQD düzeltme faktörü */
+  rqdFactor: number;
+  safetyFactor: number;
+}
+
+/**
+ * Kaya soketi taşıma kapasitesi — Zhang & Einstein (1998)
+ * qu bazlı uç direnci + çevre sürtünmesi
+ */
+export function rockSocketCapacity(input: RockSocketInput): RockSocketResult {
+  const { socketDiameter: D, socketLength: Ls, rockUCS, RQD, safetyFactor: FS = 3.0 } = input;
+
+  const Ap = Math.PI * D * D / 4;
+  const perimeter = Math.PI * D;
+
+  // Zhang & Einstein (1998) — MPa cinsinden
+  const qp = 4.83 * Math.pow(rockUCS, 0.51); // MPa
+  const qs = 0.4 * Math.pow(rockUCS, 0.5);   // MPa
+
+  // RQD düzeltme faktörü (kötü kaya kalitesi için azaltma)
+  let rqdFactor = 1.0;
+  if (RQD < 70) rqdFactor = 0.6 + (RQD / 70) * 0.4;
+  if (RQD < 25) rqdFactor = 0.3;
+
+  const qpCorr = qp * rqdFactor;
+  const qsCorr = qs * rqdFactor;
+
+  // kN'a çevir (MPa → kPa: ×1000)
+  const Qp = qpCorr * 1000 * Ap;
+  const Qs = qsCorr * 1000 * perimeter * Ls;
+  const Qu = Qp + Qs;
+  const Qa = Qu / FS;
+
+  return {
+    method: "Zhang & Einstein (1998) — Kaya Soketi",
+    unitTipResistance: round(qpCorr, 3),
+    unitShaftResistance: round(qsCorr, 3),
+    tipCapacity: round(Qp),
+    shaftCapacity: round(Qs),
+    ultimate: round(Qu),
+    allowable: round(Qa),
+    rqdFactor: round(rqdFactor, 2),
+    safetyFactor: FS,
+  };
+}
+
+// ─── Kaya Soketi Oturması — AASHTO (2002) ───
+
+export interface RockSocketSettlementInput {
+  /** Uygulanan yük (kN) */
+  load: number;
+  /** Soket çapı (m) */
+  socketDiameter: number;
+  /** Soket uzunluğu (m) */
+  socketLength: number;
+  /** Kaya elastisite modülü Er (MPa) */
+  rockModulus: number;
+  /** Beton elastisite modülü Ec (MPa) */
+  concreteModulus: number;
+}
+
+export interface RockSocketSettlementResult {
+  method: string;
+  /** Elastik kısalma (mm) */
+  elasticShortening: number;
+  /** Uç oturması (mm) */
+  tipSettlement: number;
+  /** Toplam oturma (mm) */
+  totalSettlement: number;
+}
+
+/**
+ * AASHTO (2002) kaya soketi oturma hesabı
+ * Elastik kısalma + uç oturması
+ */
+export function rockSocketSettlement(input: RockSocketSettlementInput): RockSocketSettlementResult {
+  const { load, socketDiameter: D, socketLength: Ls, rockModulus: Er, concreteModulus: Ec } = input;
+
+  const Ap = Math.PI * D * D / 4;
+
+  // Elastik kısalma: δe = P * L / (Ap * Ec)
+  // Ec MPa → kPa: ×1000, load kN, Ap m², Ls m → sonuç m → mm'ye çevir
+  const elasticShortening = (load * Ls) / (Ap * Ec * 1000) * 1000; // mm
+
+  // Uç oturması — Pells & Turner (1979) / AASHTO yaklaşımı
+  // δtip = P / (D * Er * 1000) * Ip, Ip ≈ 0.5 (rijit dairesel temel)
+  const Ip = 0.5;
+  const tipSettlement = (load / (D * Er * 1000)) * Ip * 1000; // mm
+
+  const total = elasticShortening + tipSettlement;
+
+  return {
+    method: "AASHTO (2002) — Kaya Soketi Oturması",
+    elasticShortening: round(elasticShortening, 3),
+    tipSettlement: round(tipSettlement, 3),
+    totalSettlement: round(total, 3),
+  };
+}
+
+// ─── EC7 Kazık Tasarımı ───
+
+export interface EC7PileInput extends PileInput {
+  /** Tasarım yaklaşımı */
+  designApproach: "DA1-C1" | "DA1-C2" | "DA2";
+  /** Kalıcı yük Gk (kN) */
+  permanentLoad: number;
+  /** Değişken yük Qk (kN) */
+  variableLoad: number;
+  /** Statik yükleme test sayısı */
+  numberOfTests: number;
+}
+
+export interface EC7PileResult {
+  method: string;
+  /** Tasarım yükü Fd (kN) */
+  designLoad: number;
+  /** Karakteristik direnç Rk (kN) */
+  characteristicResistance: number;
+  /** Tasarım direnci Rd (kN) */
+  designResistance: number;
+  /** Kullanım oranı */
+  utilisation: number;
+  /** Korelasyon faktörleri */
+  correlationFactors: { xi3: number; xi4: number };
+  /** Kısmi faktörler */
+  partialFactors: { gammaG: number; gammaQ: number; gammaB: number; gammaS: number };
+  /** Yeterli mi? */
+  adequate: boolean;
+}
+
+/**
+ * EC7 Kazık Tasarımı — Design Approach 1 & 2
+ */
+export function pileCapacityEC7(input: EC7PileInput): EC7PileResult {
+  const { designApproach, permanentLoad: Gk, variableLoad: Qk, numberOfTests: nTests } = input;
+
+  // Korelasyon faktörleri ξ — test sayısına göre (EN 1997-1 Tablo A.10)
+  const xiTable: Record<number, { xi3: number; xi4: number }> = {
+    1: { xi3: 1.40, xi4: 1.40 },
+    2: { xi3: 1.35, xi4: 1.27 },
+    3: { xi3: 1.33, xi4: 1.23 },
+    4: { xi3: 1.31, xi4: 1.20 },
+    5: { xi3: 1.29, xi4: 1.15 },
+  };
+  const nKey = Math.min(Math.max(nTests, 1), 5);
+  const xi = xiTable[nKey];
+
+  // Kısmi faktörler
+  let gammaG: number, gammaQ: number, gammaB: number, gammaS: number;
+
+  switch (designApproach) {
+    case "DA1-C1": // A1 + M1 + R1
+      gammaG = 1.35; gammaQ = 1.5; gammaB = 1.0; gammaS = 1.0;
+      break;
+    case "DA1-C2": // A2 + M1 + R4
+      gammaG = 1.0; gammaQ = 1.3; gammaB = 1.3; gammaS = 1.3;
+      break;
+    case "DA2": // A1 + M1 + R2
+      gammaG = 1.35; gammaQ = 1.5; gammaB = 1.1; gammaS = 1.0;
+      break;
+  }
+
+  // Tasarım yükü
+  const Fd = gammaG * Gk + gammaQ * Qk;
+
+  // Karakteristik direnç — mevcut statik hesaptan al
+  const staticResult = pileCapacityStatic(input);
+  const Rc = staticResult.ultimate;
+
+  // Rk = min(Rc_mean / ξ3, Rc_min / ξ4) — tek test için ξ3 = ξ4
+  const Rk = Math.min(Rc / xi.xi3, Rc / xi.xi4);
+
+  // Tasarım direnci
+  const tipRatio = staticResult.tipCapacity / Math.max(Rc, 0.001);
+  const shaftRatio = staticResult.shaftCapacity / Math.max(Rc, 0.001);
+  const Rd = (tipRatio * Rk) / gammaB + (shaftRatio * Rk) / gammaS;
+
+  const utilisation = Fd / Math.max(Rd, 0.001);
+
+  return {
+    method: `EC7 Kazık Tasarımı — ${designApproach}`,
+    designLoad: round(Fd),
+    characteristicResistance: round(Rk),
+    designResistance: round(Rd),
+    utilisation: round(utilisation, 3),
+    correlationFactors: xi,
+    partialFactors: { gammaG, gammaQ, gammaB, gammaS },
+    adequate: utilisation <= 1.0,
+  };
+}
+
 export function lateralPileBroms(input: LateralPileInput): LateralPileResult {
   const { diameter: D, length: L, EI, soilType, cu, frictionAngle: phi, gamma, headCondition } = input;
 

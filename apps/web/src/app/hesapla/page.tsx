@@ -30,6 +30,10 @@ const categories = [
       { href: "/hesapla/konsolidasyon", icon: "⏱️", title: "Konsolidasyon", desc: "Zaman-oturma ilişkisi ve PVD analizi", methods: ["Terzaghi", "PVD Hansbo"] },
       { href: "/hesapla/zemin-iyilestirme", icon: "🔨", title: "Zemin İyileştirme", desc: "Dinamik kompaksiyon, taş kolon, ön yükleme", methods: ["Menard", "Priebe", "Ön Yükleme"] },
       { href: "/hesapla/istinat-duvari", icon: "🧱", title: "İstinat Duvarı", desc: "Ağırlık duvarı ve donatılı zemin stabilitesi", methods: ["Ağırlık Duvarı", "Geogrid"] },
+      { href: "/hesapla/destekli-kazi", icon: "🏗️", title: "Destekli Kazı", desc: "Peck apparent pressure, destek kuvvetleri, taban kabarması", methods: ["Peck 1969"] },
+      { href: "/hesapla/tekil-temel", icon: "🧱", title: "Tekil Temel Tasarımı", desc: "Zımbalama, eğilme, kayma ve devrilme kontrolleri", methods: ["ACI 318", "TS500"] },
+      { href: "/hesapla/kaya-kazik", icon: "🪨", title: "Kaya Soketi Kazık", desc: "Kaya soketi kapasite ve oturma analizi", methods: ["Zhang & Einstein", "AASHTO"] },
+      { href: "/hesapla/ec7-kazik", icon: "🇪🇺", title: "EC7 Kazık Tasarımı", desc: "Eurocode 7 kısmi güvenlik katsayıları ile kazık tasarımı", methods: ["DA1-C1", "DA1-C2", "DA2"] },
     ],
   },
   {
@@ -41,6 +45,7 @@ const categories = [
       { href: "/hesapla/indeks-deneyleri", icon: "📊", title: "İndeks Deneyleri", desc: "Atterberg limitleri, plastisite kartı, dane dağılımı", methods: ["Atterberg", "Dane Dağılımı"] },
       { href: "/hesapla/gerilme-temel", icon: "🎯", title: "Gerilme & Temel", desc: "Mohr dairesi, sığ temel ön boyutlandırma", methods: ["Mohr", "Boyutlandırma"] },
       { href: "/hesapla/gerilme-dagilimi", icon: "📐", title: "Gerilme Dağılımı", desc: "Boussinesq gerilme ve CBR korelasyonları", methods: ["Boussinesq", "CBR"] },
+      { href: "/hesapla/zemin-ozellik-db", icon: "📚", title: "Zemin & Kaya Özellik DB", desc: "USCS/SPT korelasyonu ve RMR/UCS bazlı parametre tahmini", methods: ["USCS", "RMR", "UCS"] },
     ],
   },
 ];

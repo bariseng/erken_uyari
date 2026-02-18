@@ -10,6 +10,8 @@
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { drawChart } from "./report-charts";
+import type { ChartData } from "./report-charts";
 
 // ─── Rapor Veri Yapıları ───
 
@@ -26,7 +28,7 @@ export interface ReportProject {
 
 export interface ReportSection {
   title: string;
-  type: "text" | "table" | "calculation" | "chart-placeholder";
+  type: "text" | "table" | "calculation" | "chart-placeholder" | "chart";
   content?: string;
   tableData?: { headers: string[]; rows: string[][] };
   calcData?: {
@@ -36,6 +38,7 @@ export interface ReportSection {
     results: { label: string; value: string; unit: string; highlight?: boolean }[];
     notes?: string[];
   };
+  chartData?: ChartData;
 }
 
 export interface ReportConfig {
@@ -93,8 +96,17 @@ export function generateReport(config: ReportConfig): jsPDF {
       y = drawTable(doc, section.tableData, y, margin, contentW);
     } else if (section.type === "calculation" && section.calcData) {
       y = drawCalculation(doc, section.calcData, y, margin, contentW);
+    } else if (section.type === "chart" && section.chartData) {
+      y = drawChart(doc, section.chartData, margin, y, contentW, 90);
     } else if (section.type === "chart-placeholder") {
-      y = drawChartPlaceholder(doc, section.title, y, margin, contentW);
+      // Eski placeholder — basit gri kutu (geriye uyumluluk)
+      const ph = 60;
+      doc.setFillColor(...COLORS.lightGray);
+      doc.roundedRect(margin, y, contentW, ph, 3, 3, "F");
+      doc.setTextColor(...COLORS.gray);
+      doc.setFontSize(10);
+      doc.text(`[Grafik: ${section.title}]`, margin + contentW / 2, y + ph / 2, { align: "center" });
+      y += ph + 10;
     }
 
     // Sayfa altı
@@ -366,19 +378,7 @@ function drawCalculation(doc: jsPDF, calc: NonNullable<ReportSection["calcData"]
   return y;
 }
 
-// ─── Grafik Placeholder ───
-
-function drawChartPlaceholder(doc: jsPDF, title: string, y: number, margin: number, contentW: number): number {
-  const h = 60;
-  doc.setFillColor(...COLORS.lightGray);
-  doc.roundedRect(margin, y, contentW, h, 3, 3, "F");
-  doc.setDrawColor(200, 200, 200);
-  doc.roundedRect(margin, y, contentW, h, 3, 3, "S");
-  doc.setTextColor(...COLORS.gray);
-  doc.setFontSize(10);
-  doc.text(`[Grafik: ${title}]`, margin + contentW / 2, y + h / 2, { align: "center" });
-  return y + h + 10;
-}
+// drawChartPlaceholder kaldırıldı — artık gerçek grafikler (report-charts.ts) kullanılıyor.
 
 // ─── Hazır Rapor Şablonları ───
 
@@ -434,6 +434,28 @@ export function createBearingCapacityReport(project: ReportProject, inputs: Reco
         },
       },
       {
+        title: "Tasima Kapasitesi Karsilastirma Grafigi",
+        type: "chart" as const,
+        chartData: (() => {
+          const base = {
+            width: Number(inputs.width ?? 2), length: Number(inputs.length ?? 2),
+            depth: Number(inputs.depth ?? 1.5), gamma: Number(inputs.gamma ?? 18),
+            cohesion: Number(inputs.cohesion ?? 20), frictionAngle: Number(inputs.frictionAngle ?? 30),
+            safetyFactor: Number(inputs.safetyFactor ?? 3),
+          };
+          const methods = [
+            { name: results.method || "Terzaghi", ultimate: Number(results.ultimate ?? 0), allowable: Number(results.allowable ?? 0) },
+          ];
+          if (results._multi && results.results) {
+            methods.length = 0;
+            for (const r of results.results) {
+              methods.push({ name: r.method || "?", ultimate: Number(r.ultimate ?? 0), allowable: Number(r.allowable ?? 0) });
+            }
+          }
+          return { type: "bearing-comparison" as const, data: { methods, safetyFactor: base.safetyFactor } };
+        })(),
+      },
+      {
         title: "Degerlendirme ve Oneriler",
         type: "text",
         content: `Yapilan hesaplamalar sonucunda, izin verilebilir tasima kapasitesi ${results.allowable ?? "-"} kPa olarak belirlenmistir. Bu deger, temel tasariminda kullanilabilir. Ancak, nihai tasarim icin saha kosullari, yeralti su seviyesi, deprem etkileri ve oturma analizleri de dikkate alinmalidir. Gerekli gorulmesi halinde ek sondaj ve laboratuvar deneyleri yapilmasi onerilmektedir.`,
@@ -473,6 +495,25 @@ export function createSettlementReport(project: ReportProject, inputs: Record<st
           notes: ["Hesaplamalar GeoForce platformu ile yapilmistir."],
         },
       },
+      // Oturma grafiği (konsolidasyon veya Schmertmann ise)
+      ...((results.method || "").includes("Konsolidasyon") && results["timeSettlement.timeDays"]
+        ? [{
+            title: "Zaman-Oturma Grafigi",
+            type: "chart" as const,
+            chartData: {
+              type: "settlement-time" as const,
+              data: {
+                curve: (Array.isArray(results.timeSettlement?.timeDays)
+                  ? results.timeSettlement.timeDays : []).map((t: number, idx: number) => ({
+                  time: t / 365,
+                  U: results.timeSettlement?.degree?.[idx] ?? 0,
+                  settlement: results.timeSettlement?.settlement?.[idx] ?? 0,
+                })),
+                totalSettlement: Number(results.primarySettlement ?? 0),
+              },
+            },
+          }]
+        : []),
       {
         title: "Sonuc ve Oneriler",
         type: "text",
@@ -482,41 +523,122 @@ export function createSettlementReport(project: ReportProject, inputs: Record<st
   };
 }
 
-export function createGenericReport(project: ReportProject, moduleName: string, inputs: Record<string, any>, results: Record<string, any>, method: string): ReportConfig {
-  return {
-    project,
-    sections: [
-      {
-        title: "Proje Bilgileri",
-        type: "text",
-        content: `Bu rapor, ${project.projectName} projesi icin ${moduleName} hesaplamalarini icermektedir. Konum: ${project.projectLocation}. Tarih: ${project.reportDate}.`,
+export function createGenericReport(project: ReportProject, moduleName: string, inputs: Record<string, any>, results: Record<string, any>, method: string, chartData?: ChartData | null): ReportConfig {
+  const sections: ReportConfig["sections"] = [
+    {
+      title: "Proje Bilgileri",
+      type: "text",
+      content: `Bu rapor, ${project.projectName} projesi icin ${moduleName} hesaplamalarini icermektedir. Konum: ${project.projectLocation}. Tarih: ${project.reportDate}.`,
+    },
+    {
+      title: "Girdi Parametreleri",
+      type: "table",
+      tableData: {
+        headers: ["Parametre", "Deger"],
+        rows: Object.entries(inputs).map(([k, v]) => [k, String(v)]),
       },
-      {
-        title: "Girdi Parametreleri",
-        type: "table",
-        tableData: {
-          headers: ["Parametre", "Deger"],
-          rows: Object.entries(inputs).map(([k, v]) => [k, String(v)]),
-        },
+    },
+    {
+      title: `${moduleName} Hesabi`,
+      type: "calculation",
+      calcData: {
+        method,
+        inputs: Object.entries(inputs).map(([k, v]) => ({ label: k, value: String(v), unit: "" })),
+        results: Object.entries(results)
+          .filter(([k]) => !["method", "slices", "layerDetails", "pressureDiagram", "circlePoints", "timeCurve", "comparison", "transferFunction", "profile", "fitCurve", "zavCurve", "_error", "_note"].includes(k))
+          .map(([k, v]) => ({ label: k, value: typeof v === "number" ? v.toFixed(2) : String(v), unit: "", highlight: false })),
+        notes: [`Yontem: ${method}`, "GeoForce platformu ile hesaplanmistir."],
       },
-      {
-        title: `${moduleName} Hesabi`,
-        type: "calculation",
-        calcData: {
-          method,
-          inputs: Object.entries(inputs).map(([k, v]) => ({ label: k, value: String(v), unit: "" })),
-          results: Object.entries(results)
-            .filter(([k]) => !["method", "slices", "layerDetails", "pressureDiagram", "circlePoints", "timeCurve", "comparison", "transferFunction", "profile", "fitCurve", "zavCurve"].includes(k))
-            .map(([k, v]) => ({ label: k, value: typeof v === "number" ? v.toFixed(2) : String(v), unit: "", highlight: false })),
-          notes: [`Yontem: ${method}`, "GeoForce platformu ile hesaplanmistir."],
-        },
+    },
+  ];
+
+  // Chart section — explicit chartData veya results'tan otomatik algılama
+  const chart = chartData ?? inferChartFromResults(results);
+  if (chart) {
+    sections.push({ title: `${moduleName} Grafigi`, type: "chart", chartData: chart });
+  }
+
+  sections.push({
+    title: "Degerlendirme",
+    type: "text",
+    content: "Yukaridaki hesap sonuclari, yetkili bir geoteknik muhendis tarafindan degerlendirilmeli ve onaylanmalidir. Sonuclar, saha kosullari ve laboratuvar deneyleri ile birlikte yorumlanmalidir.",
+  });
+
+  return { project, sections, includeDisclaimer: true };
+}
+
+/**
+ * Results objesinden chart data çıkarımı (GÖREV 4).
+ * Bilinen alanlar varsa uygun ChartData döndürür.
+ */
+function inferChartFromResults(results: Record<string, any>): ChartData | null {
+  // Yanal basınç / iksa basınç diyagramı
+  if (results.pressureDiagram && Array.isArray(results.pressureDiagram)) {
+    return {
+      type: "excavation-pressure",
+      data: {
+        excavationDepth: results.excavationDepth ?? results.wallHeight ?? 6,
+        embedmentDepth: results.embedmentDepth ?? 3,
+        pressureDiagram: results.pressureDiagram,
+        anchorForces: results.anchorForces,
+        Ka: results.Ka ?? 0.33,
+        Kp: results.Kp ?? 3,
       },
-      {
-        title: "Degerlendirme",
-        type: "text",
-        content: "Yukaridaki hesap sonuclari, yetkili bir geoteknik muhendis tarafindan degerlendirilmeli ve onaylanmalidir. Sonuclar, saha kosullari ve laboratuvar deneyleri ile birlikte yorumlanmalidir.",
+    };
+  }
+  // Zaman-oturma eğrisi
+  if (results.timeCurve && Array.isArray(results.timeCurve)) {
+    return {
+      type: "settlement-time",
+      data: {
+        curve: results.timeCurve.map((c: any) => ({ time: c.time, U: c.U, settlement: c.settlement })),
+        totalSettlement: results.totalSettlement,
       },
-    ],
-    includeDisclaimer: true,
-  };
+    };
+  }
+  // Kazık yük transferi
+  if (results.layerDetails && Array.isArray(results.layerDetails)) {
+    return {
+      type: "pile-load-transfer",
+      data: {
+        layers: results.layerDetails.map((l: any) => ({
+          depthTop: parseFloat(String(l.depth).split("-")[0]) || 0,
+          depthBottom: parseFloat(String(l.depth).split("-")[1]) || 0,
+          type: l.type, qs: l.qs, contribution: l.contribution,
+        })),
+        tipCapacity: results.tipCapacity ?? 0,
+        shaftCapacity: results.shaftCapacity ?? 0,
+        ultimate: results.ultimate ?? 0,
+        pileLength: results.pileLength ?? 15,
+        pileDiameter: results.pileDiameter ?? 0.6,
+      },
+    };
+  }
+  // Şev stabilitesi
+  if (results.slices && Array.isArray(results.slices)) {
+    return {
+      type: "slope-stability",
+      data: {
+        height: results.height ?? 10,
+        slopeAngle: results.slopeAngle ?? 30,
+        center: results.criticalCenter,
+        radius: results.criticalRadius,
+        FS: results.FS ?? 1,
+        slices: results.slices.map((s: any) => ({ x: s.x, width: s.width })),
+      },
+    };
+  }
+  // Mohr dairesi
+  if (results.circlePoints && Array.isArray(results.circlePoints)) {
+    return {
+      type: "mohr-circle",
+      data: {
+        sigma1: results.sigma1 ?? 300, sigma3: results.sigma3 ?? 100,
+        center: results.center, radius: results.radius,
+        cohesion: results.cohesion ?? 0, frictionAngle: results.frictionAngle ?? 30,
+        circlePoints: results.circlePoints,
+      },
+    };
+  }
+  return null;
 }

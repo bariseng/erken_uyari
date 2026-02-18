@@ -21,3 +21,6 @@ export * from "./soil-index/index";
 export * from "./stress-foundation/index";
 export * from "./boussinesq-cbr/index";
 export * from "./retaining-stability/index";
+export * from "./braced-excavation/index";
+export * from "./pad-footing/index";
+export * from "./soil-properties-db/index";
