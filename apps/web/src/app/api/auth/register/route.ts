@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashSync } from "bcryptjs";
+import { registerSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json();
-
-    if (!email || !password || password.length < 6) {
-      return NextResponse.json({ error: "E-posta ve en az 6 karakter şifre gerekli." }, { status: 400 });
+    const body = await req.json();
+    
+    // Validate input with Zod
+    const parsed = registerSchema.safeParse(body);
+    if (!parsed.success) {
+      const error = parsed.error.issues[0]?.message || "Geçersiz giriş.";
+      return NextResponse.json({ error }, { status: 400 });
     }
+
+    const { name, email, password } = parsed.data;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -21,7 +27,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ id: user.id, name: user.name, email: user.email, tier: user.tier }, { status: 201 });
-  } catch (e: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Bilinmeyen hata";
+    console.error("Register error:", message);
     return NextResponse.json({ error: "Kayıt sırasında hata oluştu." }, { status: 500 });
   }
 }

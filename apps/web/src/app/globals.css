@@ -7,7 +7,7 @@
   --background: #faf8f5;
   --card: #ffffff;
   --card-border: #e0d5c5;
-  --muted: #6b7280;
+  --muted: #5a6270; /* Darkened for better contrast */
   --accent: #16a34a;
   --accent-light: #dcfce7;
 }
@@ -17,7 +17,7 @@
   --background: #1a1a1a;
   --card: #262626;
   --card-border: #404040;
-  --muted: #9ca3af;
+  --muted: #b0b8c4; /* Lightened for better contrast in dark mode */
   --accent: #4ade80;
   --accent-light: #14532d;
 }
@@ -26,6 +26,49 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ─── Accessibility ─── */
+
+/* Skip link */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only:focus {
+  position: fixed;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Better focus indicators */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ─── Bileşenler ─── */
@@ -40,26 +83,40 @@ body {
 
 .input-field {
   @apply w-full rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-3 py-2 text-sm
-    focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500
+    focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
     transition-colors;
+  --tw-ring-offset-width: 2px;
+}
+
+.input-field:focus {
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15);
 }
 
 .btn-primary {
   @apply inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white
-    hover:bg-brand-700 active:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-500/40
+    hover:bg-brand-700 active:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
     transition-all duration-150 shadow-sm hover:shadow;
 }
 
 .btn-secondary {
   @apply inline-flex items-center justify-center rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-2 text-sm font-medium
-    hover:bg-earth-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-brand-500/40
+    hover:bg-earth-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
     transition-all duration-150;
 }
 
 .btn-ghost {
   @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium text-[var(--muted)]
     hover:bg-earth-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)]
-    transition-colors;
+    transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/40;
+}
+
+/* Error state for form fields */
+.input-error {
+  @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+}
+
+.error-message {
+  @apply text-xs text-red-600 dark:text-red-400 mt-1;
 }
 
 /* ─── Animasyonlar ─── */
@@ -91,6 +148,11 @@ body {
   animation: pulse-soft 2s ease-in-out infinite;
 }
 
+/* Delayed animations */
+.animate-slide-up-delay-1 { animation-delay: 0.1s; }
+.animate-slide-up-delay-2 { animation-delay: 0.2s; }
+.animate-slide-up-delay-3 { animation-delay: 0.3s; }
+
 /* ─── Scrollbar ─── */
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -115,4 +177,22 @@ body {
 
 .gradient-bg {
   @apply bg-gradient-to-br from-brand-50 via-[var(--background)] to-earth-50 dark:from-brand-900/20 dark:via-[var(--background)] dark:to-neutral-900;
+}
+
+/* ─── Print Styles ─── */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
 }

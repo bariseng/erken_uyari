@@ -127,6 +127,11 @@
     "indeks": "Index Tests",
     "gerilme": "Stress & Foundation",
     "dagilim": "Stress Distribution",
-    "istinat": "Retaining Wall"
+    "istinat": "Retaining Wall",
+    "destekliKazi": "Braced Excavation",
+    "tekilTemel": "Spread Footing",
+    "kayaKazik": "Rock Socketed Pile",
+    "ec7Kazik": "EC7 Pile Design",
+    "zeminDb": "Soil & Rock Properties DB"
   }
 }

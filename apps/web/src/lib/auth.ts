@@ -2,6 +2,29 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./db";
 
+// Extend NextAuth types
+declare module "next-auth" {
+  interface User {
+    tier?: string;
+  }
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      tier?: string;
+    };
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    tier: string;
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -19,7 +42,6 @@ export const authOptions: NextAuthOptions = {
 
         if (!user || !user.password) return null;
 
-        // Basit hash karşılaştırma (bcrypt sandbox'ta sorunlu olabilir)
         const { compareSync } = await import("bcryptjs");
         const valid = compareSync(credentials.password, user.password);
         if (!valid) return null;
@@ -28,7 +50,10 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 gün
+  },
   pages: {
     signIn: "/giris",
     newUser: "/kayit",
@@ -37,17 +62,22 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.tier = (user as any).tier || "free";
+        token.tier = user.tier || "free";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).tier = token.tier;
+        session.user.id = token.id;
+        session.user.tier = token.tier;
       }
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "geoforce-dev-secret-change-in-production",
+  secret: process.env.NEXTAUTH_SECRET ?? (() => {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("NEXTAUTH_SECRET environment variable must be set in production");
+    }
+    return "geoforce-dev-secret-change-in-production";
+  })(),
 };

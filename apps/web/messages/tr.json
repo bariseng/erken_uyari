@@ -127,6 +127,11 @@
     "indeks": "İndeks Deneyleri",
     "gerilme": "Gerilme & Temel",
     "dagilim": "Gerilme Dağılımı",
-    "istinat": "İstinat Duvarı"
+    "istinat": "İstinat Duvarı",
+    "destekliKazi": "Destekli Kazı",
+    "tekilTemel": "Tekil Temel",
+    "kayaKazik": "Kaya Soketi Kazık",
+    "ec7Kazik": "EC7 Kazık",
+    "zeminDb": "Zemin & Kaya Özellik DB"
   }
 }
