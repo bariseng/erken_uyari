@@ -122,7 +122,7 @@ export default function ProjelerPage() {
         <div className="mt-8 card p-12 text-center text-[var(--muted)]">
           <p className="text-4xl mb-3">📂</p>
           <p className="font-medium">Henüz proje yok</p>
-          <p className="text-sm mt-1">Yukarıdaki "Yeni Proje" butonuyla başlayın</p>
+          <p className="text-sm mt-1">Yukarıdaki &quot;Yeni Proje&quot; butonuyla başlayın</p>
         </div>
       ) : (
         <div className="mt-6 space-y-3">
@@ -147,7 +147,7 @@ export default function ProjelerPage() {
 
       {tier === "free" && (
         <div className="mt-8 card p-5 bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-800">
-          <h3 className="font-semibold text-brand-700 dark:text-brand-400">⭐ Pro'ya Yükselt</h3>
+          <h3 className="font-semibold text-brand-700 dark:text-brand-400">⭐ Pro&apos;ya Yükselt</h3>
           <p className="text-sm text-[var(--muted)] mt-1">Sınırsız proje, özel logo, toplu rapor ve daha fazlası.</p>
           <button className="btn-primary text-sm mt-3">Pro Planı İncele</button>
         </div>

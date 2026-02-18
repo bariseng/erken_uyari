@@ -24,10 +24,12 @@ vi.mock('next-intl', () => ({
 // Mock next/link
 vi.mock('next/link', () => {
   const React = require('react')
+  const MockLink = ({ children, href, ...props }: any) => {
+    return React.createElement('a', { href, ...props }, children)
+  }
+  MockLink.displayName = 'Link'
   return {
-    default: ({ children, href, ...props }: any) => {
-      return React.createElement('a', { href, ...props }, children)
-    },
+    default: MockLink,
   }
 })
 
@@ -37,8 +39,12 @@ vi.mock('katex/dist/katex.min.css', () => ({}))
 // Mock recharts to avoid SVG rendering issues in jsdom
 vi.mock('recharts', () => {
   const React = require('react')
-  const mock = (name: string) => ({ children, ...props }: any) =>
-    React.createElement('div', { 'data-testid': `recharts-${name}`, ...props }, children)
+  const mock = (name: string) => {
+    const comp = ({ children, ...props }: any) =>
+      React.createElement('div', { 'data-testid': `recharts-${name}`, ...props }, children)
+    comp.displayName = name
+    return comp
+  }
   return {
     ResponsiveContainer: mock('responsive-container'),
     BarChart: mock('bar-chart'),

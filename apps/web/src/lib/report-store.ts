@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ReportProject } from "./report-generator";
 import type { SoilLayer } from "@/components/SoilLayerManager";
+import type { ChartData } from "./report-charts";
 
 export type ModuleKey =
   | "tasima-kapasitesi"
@@ -96,7 +97,7 @@ export interface ReportSection {
   results: Record<string, any> | null;
   computed: boolean;
   notes?: string;
-  charts?: string[]; // base64 PNG
+  charts?: ChartData[]; // Chart data for PDF
 }
 
 interface ReportStore {
@@ -113,7 +114,7 @@ interface ReportStore {
   updateSectionMethod: (id: string, method: string) => void;
   updateSectionResults: (id: string, results: Record<string, any>) => void;
   updateSectionNotes: (id: string, notes: string) => void;
-  updateSectionCharts: (id: string, charts: string[]) => void;
+  updateSectionCharts: (id: string, charts: ChartData[]) => void;
   setSoilLayers: (layers: SoilLayer[]) => void;
   setWaterTableDepth: (d: number) => void;
   reset: () => void;
@@ -140,7 +141,7 @@ const uid = () => `sec_${++_id}_${Date.now()}`;
 
 export const useReportStore = create<ReportStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       step: 0,
       project: { ...defaultProject },
       sections: [],

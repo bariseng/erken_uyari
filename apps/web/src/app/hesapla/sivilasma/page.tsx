@@ -189,7 +189,7 @@ export default function SivilasmaPage() {
                     <th className="text-left py-2">z (m)</th>
                     <th className="text-right py-2">(N1)60cs</th>
                     <th className="text-right py-2">σv</th>
-                    <th className="text-right py-2">σ'v</th>
+                    <th className="text-right py-2">σ&apos;v</th>
                     <th className="text-right py-2">rd</th>
                     <th className="text-right py-2">CSR</th>
                     <th className="text-right py-2">CRR</th>

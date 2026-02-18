@@ -10,6 +10,7 @@
   --muted: #5a6270; /* Darkened for better contrast */
   --accent: #16a34a;
   --accent-light: #dcfce7;
+  --font-inter: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 .dark {
@@ -25,7 +26,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter);
 }
 
 /* ─── Accessibility ─── */

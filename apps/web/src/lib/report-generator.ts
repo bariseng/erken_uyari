@@ -272,7 +272,7 @@ function drawCoverPage(doc: jsPDF, project: ReportProject, pageW: number, pageH:
 
 // ─── Başlık ───
 
-function drawHeader(doc: jsPDF, project: ReportProject, margin: number, pageW: number, pageNum?: number): number {
+function drawHeader(doc: jsPDF, project: ReportProject, margin: number, pageW: number, _pageNum?: number): number {
   // Yeşil header bandı
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 0, pageW, 15, "F");
@@ -297,6 +297,7 @@ function drawFooter(doc: jsPDF, project: ReportProject, pageW: number, pageH: nu
   
   doc.setTextColor(...COLORS.gray);
   doc.setFontSize(7);
+  doc.text(`Sayfa ${currentPage} / ${totalPages}`, pageW - margin, pageH - 5, { align: "right" });
   doc.text(`${project.company || "GeoForce"} | TBDY 2018 Uyumlu`, margin, pageH - 6);
   doc.text(`Sayfa ${currentPage}`, pageW - margin, pageH - 6, { align: "right" });
 }
@@ -381,7 +382,7 @@ function drawText(doc: jsPDF, text: string, y: number, margin: number, contentW:
 
 // ─── Tablo ───
 
-function drawTable(doc: jsPDF, data: { headers: string[]; rows: string[][] }, y: number, margin: number, contentW: number, sectionNum?: number): number {
+function drawTable(doc: jsPDF, data: { headers: string[]; rows: string[][] }, y: number, margin: number, _contentW: number, _sectionNum?: number): number {
   // Sayfa kontrolü
   const pageH = 275;
   const estimatedH = 15 + data.rows.length * 8;
@@ -425,7 +426,7 @@ function drawTable(doc: jsPDF, data: { headers: string[]; rows: string[][] }, y:
 
 // ─── Hesap Detayı ───
 
-function drawCalculation(doc: jsPDF, calc: NonNullable<ReportSection["calcData"]>, y: number, margin: number, contentW: number, sectionNum?: number): number {
+function drawCalculation(doc: jsPDF, calc: NonNullable<ReportSection["calcData"]>, y: number, margin: number, contentW: number, _sectionNum?: number): number {
   const pageH = 275;
   
   // Yöntem adı

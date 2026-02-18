@@ -8,7 +8,7 @@ function sanitize(str: string): string {
 
 // Helper: Sanitize and validate string
 const sanitizedString = (min: number = 1, max: number = 255) =>
-  z.string().min(min).max(max).transform((s: string) => sanitize(s));
+  z.string().min(min).max(max).transform((s) => sanitize(s));
 
 // Auth validation schemas
 export const registerSchema = z.object({
@@ -32,14 +32,14 @@ export const projectCreateSchema = z.object({
   name: sanitizedString(1, 255),
   description: sanitizedString(0, 2000).optional().or(z.literal("")),
   location: sanitizedString(0, 500).optional().or(z.literal("")),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const projectUpdateSchema = z.object({
   name: sanitizedString(1, 255).optional(),
   description: sanitizedString(0, 2000).optional().or(z.literal("")),
   location: sanitizedString(0, 500).optional().or(z.literal("")),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 
 // Soil layer validation

@@ -25,6 +25,28 @@ declare module "next-auth/jwt" {
   }
 }
 
+// Simple in-memory rate limiter for login attempts
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+const LOGIN_RATE_LIMIT = 5; // 5 attempts per minute
+const LOGIN_WINDOW = 60 * 1000; // 1 minute
+
+function checkLoginRateLimit(email: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = loginAttempts.get(email);
+  
+  if (!entry || entry.resetTime < now) {
+    loginAttempts.set(email, { count: 1, resetTime: now + LOGIN_WINDOW });
+    return { allowed: true, remaining: LOGIN_RATE_LIMIT - 1 };
+  }
+  
+  if (entry.count >= LOGIN_RATE_LIMIT) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  entry.count++;
+  return { allowed: true, remaining: LOGIN_RATE_LIMIT - entry.count };
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -35,6 +57,12 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Rate limit check for login attempts
+        const rateCheck = checkLoginRateLimit(credentials.email);
+        if (!rateCheck.allowed) {
+          throw new Error("Çok fazla giriş denemesi. Lütfen bir dakika bekleyip tekrar deneyin.");
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
@@ -57,6 +85,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/giris",
     newUser: "/kayit",
+    error: "/giris",
   },
   callbacks: {
     async jwt({ token, user }) {

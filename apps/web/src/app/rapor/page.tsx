@@ -16,6 +16,7 @@ import { computeModule, computeModuleWithCharts } from "@/lib/report-compute";
 import { generateReport } from "@/lib/report-generator";
 import { formatLabel, formatValue, getLabelMap } from "@/lib/report-labels";
 import type { ReportConfig, ReportSection as RPSection } from "@/lib/report-generator";
+import type { ChartData } from "@/lib/report-charts";
 import ModuleInputForm, { getDefaultInputs } from "@/components/ModuleInputForm";
 import SoilLayerManager from "@/components/SoilLayerManager";
 import type { SoilLayer } from "@/components/SoilLayerManager";
@@ -282,7 +283,7 @@ function StepSoilProfile() {
 
 /* ─── Adım 2: Hesap Bölümleri ─── */
 function StepSections() {
-  const { sections, addSection, removeSection, updateSectionInputs, updateSectionMethod, updateSectionResults, updateSectionNotes, setStep } = useReportStore();
+  const { sections, addSection, removeSection, updateSectionInputs, updateSectionMethod, updateSectionResults, updateSectionNotes, updateSectionCharts, setStep } = useReportStore();
   const [addingModule, setAddingModule] = useState<ModuleKey | null>(null);
 
   const moduleKeys = Object.keys(MODULE_META) as ModuleKey[];
@@ -305,6 +306,10 @@ function StepSections() {
     // computeModuleWithCharts kullan — hem results hem charts
     const { results, charts } = computeModuleWithCharts(sec.moduleKey, sec.method, sec.inputs);
     updateSectionResults(id, results);
+    // Chart verisini de kaydet
+    if (charts && charts.length > 0) {
+      updateSectionCharts(id, charts);
+    }
   };
 
   return (
@@ -353,7 +358,7 @@ function StepSections() {
         <div className="card p-12 text-center text-[var(--muted)]">
           <p className="text-4xl mb-3">📊</p>
           <p className="font-medium">Henüz hesap bölümü eklenmedi</p>
-          <p className="text-sm mt-1">Yukarıdaki "Bölüm Ekle" butonuyla başlayın</p>
+          <p className="text-sm mt-1">Yukarıdaki &quot;Bölüm Ekle&quot; butonuyla başlayın</p>
         </div>
       )}
 
@@ -628,6 +633,18 @@ function StepPreview() {
               ]),
             },
           });
+        }
+
+        // Chart'ları ekle (varsa)
+        if (sec.charts && sec.charts.length > 0) {
+          for (let i = 0; i < sec.charts.length; i++) {
+            const chartData = sec.charts[i];
+            reportSections.push({
+              title: i === 0 ? `${meta.label} — Grafik` : `${meta.label} — Grafik ${i + 1}`,
+              type: "chart",
+              chartData: chartData,
+            });
+          }
         }
       }
 
