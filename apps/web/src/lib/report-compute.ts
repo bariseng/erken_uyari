@@ -2,6 +2,7 @@
  * GeoForce — Rapor Hesap Köprüsü
  * Modül key + inputs → engine hesaplama → results
  * + Chart data üretimi
+ * + Sıvılaşma modülü bağlantısı
  */
 import {
   terzaghi, meyerhof, hansen, vesic,
@@ -39,9 +40,27 @@ export function computeModule(moduleKey: ModuleKey, method: string, inputs: Inpu
       case "sev-stabilitesi":
         return computeSlope(method, inputs);
       case "iksa":
+      case "braced-excavation":
+      case "destekli-kazi":
         return computeRetaining(inputs);
+      case "sivilasma":
+        return computeLiquefaction(inputs);
+      case "kazik":
+        return computePile(method, inputs);
+      case "konsolidasyon":
+        return computeConsolidation(method, inputs);
+      case "arazi-deneyleri":
+        return computeFieldTests(method, inputs);
+      case "indeks-deneyleri":
+        return computeIndexTests(method, inputs);
+      case "faz-iliskileri":
+        return computePhaseRelations(method, inputs);
+      case "gerilme-temel":
+        return computeStressFoundation(method, inputs);
+      case "siniflandirma":
+        return computeClassification(method, inputs);
       default:
-        return computeGeneric(moduleKey, method, inputs);
+        return { ...inputs, _note: "Bu modül için otomatik hesaplama henüz bağlanmadı. Sonuçları manuel girebilirsiniz." };
     }
   } catch (e: any) {
     return { _error: e.message || "Hesaplama hatası" };
@@ -50,7 +69,6 @@ export function computeModule(moduleKey: ModuleKey, method: string, inputs: Inpu
 
 /**
  * Hesaplama + chart data birlikte döndüren wrapper.
- * Eski computeModule geriye uyumlu kalır.
  */
 export function computeModuleWithCharts(
   moduleKey: ModuleKey,
@@ -63,11 +81,13 @@ export function computeModuleWithCharts(
   const charts: ChartData[] = [];
 
   // Birden fazla chart üretebilen modüller
-  if (moduleKey === "konsolidasyon") {
+  if (moduleKey === "sivilasma") {
+    const c1 = buildLiquefactionChart(inputs, results);
+    if (c1) charts.push(c1);
+  } else if (moduleKey === "konsolidasyon") {
     const c1 = buildConsolidationChart(method, inputs);
     if (c1) charts.push(c1);
   } else if (moduleKey === "arazi-deneyleri") {
-    // Efektif gerilme + SPT ayrı chart'lar üretebilir
     const stress = buildFieldTestChart("Efektif", inputs);
     const spt = buildFieldTestChart("SPT", inputs);
     if (method.includes("Efektif") && stress) charts.push(stress);
@@ -76,7 +96,6 @@ export function computeModuleWithCharts(
       if (stress) charts.push(stress);
     }
   } else {
-    // Tek chart üreten modüller
     const chart = computeChartData(moduleKey, method, inputs);
     if (chart) charts.push(chart);
   }
@@ -84,6 +103,7 @@ export function computeModuleWithCharts(
   return { results, charts };
 }
 
+// ─── Taşıma Kapasitesi ───
 function computeBearing(method: string, i: Inputs) {
   const base = {
     width: n(i, "width", 2),
@@ -94,14 +114,21 @@ function computeBearing(method: string, i: Inputs) {
     frictionAngle: n(i, "frictionAngle", 30),
     safetyFactor: n(i, "safetyFactor", 3),
   };
-  if (method.startsWith("Tümü")) {
-    const all = [terzaghi(base), meyerhof(base), hansen(base), vesic(base)];
+  if (method.startsWith("Tümü") || method.includes("Tümü")) {
+    const all = [
+      terzaghi(base),
+      meyerhof(base),
+      hansen(base),
+      vesic(base),
+    ];
     return { _multi: true, results: all.map(r => flatten(r)) };
   }
   const fn = method.includes("Meyerhof") ? meyerhof : method.includes("Hansen") ? hansen : method.includes("Vesic") ? vesic : terzaghi;
-  return flatten(fn(base));
+  const result = fn(base);
+  return { method: method.split(" ")[0], ...flatten(result) };
 }
 
+// ─── Oturma ───
 function computeSettlement(method: string, i: Inputs) {
   if (method.includes("Elastik")) {
     return flatten(elasticSettlement({
@@ -126,6 +153,7 @@ function computeSettlement(method: string, i: Inputs) {
   }));
 }
 
+// ─── Yanal Toprak Basıncı ───
 function computeLateral(method: string, i: Inputs) {
   const base = {
     wallHeight: n(i, "wallHeight", 5), gamma: n(i, "gamma", 18),
@@ -137,6 +165,7 @@ function computeLateral(method: string, i: Inputs) {
   return flatten(rankine(base));
 }
 
+// ─── Deprem Parametreleri ───
 function computeSeismic(i: Inputs) {
   return flatten(calculateSeismicParams({
     Ss: n(i, "Ss", 1.0), S1: n(i, "S1", 0.3),
@@ -144,6 +173,7 @@ function computeSeismic(i: Inputs) {
   }));
 }
 
+// ─── Şev Stabilitesi ───
 function computeSlope(method: string, i: Inputs) {
   const base = {
     height: n(i, "height", 10), slopeAngle: n(i, "slopeAngle", 30),
@@ -154,6 +184,7 @@ function computeSlope(method: string, i: Inputs) {
   return flatten(fn(base));
 }
 
+// ─── İksa ───
 function computeRetaining(i: Inputs) {
   return flatten(analyzeRetainingWall({
     excavationDepth: n(i, "excavationDepth", 6), gamma: n(i, "gamma", 18),
@@ -162,8 +193,176 @@ function computeRetaining(i: Inputs) {
   }));
 }
 
-function computeGeneric(_key: ModuleKey, _method: string, inputs: Inputs) {
-  return { ...inputs, _note: "Bu modül için otomatik hesaplama henüz bağlanmadı. Sonuçları manuel girebilirsiniz." };
+// ─── Sıvılaşma ───
+function computeLiquefaction(i: Inputs): Record<string, any> {
+  // Tabaka formatını dönüştür
+  const layers = i.layers || [
+    { depth: n(i, "depth", 5), N: n(i, "N", 15), finesContent: n(i, "finesContent", 15) },
+  ];
+
+  const result = evaluateLiquefaction({
+    layers,
+    magnitude: n(i, "magnitude", 7.5),
+    amax: n(i, "amax", 0.4),
+    waterTableDepth: n(i, "waterTableDepth", 2),
+    gamma: n(i, "gamma", 18),
+    gammaSat: n(i, "gammaSat", 20),
+  });
+
+  // Sonuçları düzleştir
+  const flatResults: Record<string, any> = {
+    method: result.method,
+    LPI: result.LPI,
+    riskLevel: result.riskLevel,
+    riskLevelTR: result.riskLevelTR,
+  };
+
+  // Tabaka sonuçlarını ekle
+  result.layers.forEach((layer, idx) => {
+    flatResults[`layers.${idx}.depth`] = layer.depth;
+    flatResults[`layers.${idx}.N160cs`] = layer.N160cs;
+    flatResults[`layers.${idx}.CSR`] = layer.CSR;
+    flatResults[`layers.${idx}.CRR`] = layer.CRR;
+    flatResults[`layers.${idx}.MSF`] = layer.MSF;
+    flatResults[`layers.${idx}.FS`] = layer.FS;
+    flatResults[`layers.${idx}.status`] = layer.status;
+  });
+
+  // Orijinal tabaka verilerini de sakla (grafik için)
+  flatResults._layerDetails = result.layers;
+  flatResults._magnitude = n(i, "magnitude", 7.5);
+  flatResults._amax = n(i, "amax", 0.4);
+  flatResults._waterTableDepth = n(i, "waterTableDepth", 2);
+
+  return flatResults;
+}
+
+// ─── Kazık ───
+function computePile(method: string, i: Inputs) {
+  const pileInput = {
+    diameter: n(i, "diameter", 0.6),
+    length: n(i, "length", 15),
+    pileType: (i.pileType as any) || "driven",
+    layers: i.layers || [
+      { depthTop: 0, depthBottom: 5, soilType: "clay", cu: n(i, "cu", 40), gamma: n(i, "gamma", 18) },
+      { depthTop: 5, depthBottom: 10, soilType: "sand", frictionAngle: n(i, "frictionAngle", 30), gamma: n(i, "gamma", 18) },
+      { depthTop: 10, depthBottom: 15, soilType: "sand", frictionAngle: n(i, "frictionAngle", 32), gamma: n(i, "gamma", 18), N: n(i, "N", 20) },
+    ],
+    safetyFactor: n(i, "safetyFactor", 2.5),
+  };
+  const fn = method.includes("SPT") ? pileCapacitySPT : pileCapacityStatic;
+  return flatten(fn(pileInput));
+}
+
+// ─── Konsolidasyon ───
+function computeConsolidation(method: string, i: Inputs) {
+  if (method.includes("PVD")) {
+    return flatten(pvdAnalysis({
+      cv: n(i, "cv", 2), ch: n(i, "ch", 6),
+      layerThickness: n(i, "layerThickness", 10), spacing: n(i, "spacing", 1.5),
+      pattern: (i.pattern as any) || "triangular",
+      drainDiameter: n(i, "drainDiameter", 0.05),
+      mandelDiameter: i.mandelDiameter ? n(i, "mandelDiameter", 0.15) : undefined,
+      targetDegree: n(i, "targetDegree", 90),
+      totalSettlement: i.totalSettlement ? n(i, "totalSettlement", 0.5) : undefined,
+    }));
+  }
+  return flatten(consolidationTime({
+    cv: n(i, "cv", 2), drainagePath: n(i, "drainagePath", 2),
+    targetDegree: n(i, "targetDegree", 90),
+    totalSettlement: i.totalSettlement ? n(i, "totalSettlement", 0.5) : undefined,
+  }));
+}
+
+// ─── Arazi Deneyleri ───
+function computeFieldTests(method: string, i: Inputs) {
+  if (method.includes("Efektif") || method.includes("Gerilme")) {
+    const layers = i.layers || [
+      { thickness: 3, gamma: n(i, "gamma", 17) },
+      { thickness: 4, gamma: n(i, "gamma", 18), gammaSat: n(i, "gammaSat", 20) },
+      { thickness: 5, gamma: n(i, "gamma", 19), gammaSat: n(i, "gammaSat", 21) },
+    ];
+    return flatten(stressProfile({ layers, waterTableDepth: n(i, "waterTableDepth", 3), surcharge: n(i, "surcharge", 0) }));
+  }
+  if (method.includes("SPT")) {
+    return flatten(sptCorrelations({ N: n(i, "N", 15), depth: n(i, "depth", 5), effectiveStress: n(i, "effectiveStress", 50), soilType: i.soilType || "sand" }));
+  }
+  return { _note: "Yöntem seçili değil" };
+}
+
+// ─── İndeks Deneyleri ───
+function computeIndexTests(method: string, i: Inputs) {
+  if (method.includes("Dane")) {
+    const data = i.grainSizeData || [
+      { sieveSize: 75, percentPassing: 100 },
+      { sieveSize: 4.75, percentPassing: 78 },
+      { sieveSize: 0.075, percentPassing: 12 },
+    ];
+    return flatten(grainSizeAnalysis({ data }));
+  }
+  // Atterberg
+  const LL = n(i, "LL", 45);
+  const PL = n(i, "PL", 22);
+  return { LL, PL, PI: LL - PL, method: "Atterberg Limitleri" };
+}
+
+// ─── Faz İlişkileri ───
+function computePhaseRelations(method: string, i: Inputs) {
+  if (method.includes("Proctor")) {
+    const points = i.proctorPoints || [
+      { waterContent: 8, dryDensity: 17.2 },
+      { waterContent: 12, dryDensity: 18.8 },
+      { waterContent: 16, dryDensity: 17.9 },
+    ];
+    return flatten(proctorAnalysis({ points, Gs: n(i, "Gs", 2.65), testType: (i.testType as any) || "standard" }));
+  }
+  // Temel faz hesabı
+  const Gs = n(i, "Gs", 2.65);
+  const w = n(i, "w", 20) / 100;
+  const gamma = n(i, "gamma", 18);
+  const gammaW = 9.81;
+  const e = (Gs * gammaW * (1 + w) / gamma) - 1;
+  const porosity = e / (1 + e);
+  const S = (Gs * w) / e * 100;
+  return { Gs, w: w * 100, gamma, e: e.toFixed(3), n: porosity.toFixed(3), S: S.toFixed(1) };
+}
+
+// ─── Gerilme & Temel ───
+function computeStressFoundation(method: string, i: Inputs) {
+  if (method.includes("Mohr")) {
+    return flatten(mohrCircle({
+      sigma1: n(i, "sigma1", 300), sigma3: n(i, "sigma3", 100),
+      cohesion: n(i, "cohesion", 20), frictionAngle: n(i, "frictionAngle", 30),
+    }));
+  }
+  return { _note: "Yöntem seçili değil" };
+}
+
+// ─── Sınıflandırma ───
+function computeClassification(method: string, i: Inputs) {
+  const gravel = n(i, "gravel", 20);
+  const sand = n(i, "sand", 45);
+  const fines = n(i, "fines", 35);
+  const LL = n(i, "LL", 40);
+  const PL = n(i, "PL", 20);
+  const PI = LL - PL;
+
+  // Basit USCS sınıflaması
+  let USCS = "";
+  if (fines > 50) {
+    if (PI < 7) USCS = fines > 85 ? "ML" : "CL-ML";
+    else if (PI > LL - 20 || PI > 25) USCS = "CH";
+    else USCS = "CL";
+  } else if (gravel > sand) {
+    USCS = fines > 12 ? "GC" : "GW";
+  } else {
+    USCS = fines > 12 ? "SC" : "SW";
+  }
+
+  return {
+    gravel, sand, fines, LL, PL, PI, USCS,
+    method: method.includes("AASHTO") ? "AASHTO" : method.includes("TBDY") ? "TBDY 2018" : "USCS",
+  };
 }
 
 // ─── Chart Data Üretici ───
@@ -180,6 +379,8 @@ export function computeChartData(moduleKey: ModuleKey, method: string, inputs: I
       case "sev-stabilitesi":
         return buildSlopeChart(method, inputs);
       case "iksa":
+      case "braced-excavation":
+      case "destekli-kazi":
         return buildExcavationChart(inputs);
       case "sivilasma":
         return buildLiquefactionChart(inputs);
@@ -219,7 +420,7 @@ function buildBearingChart(method: string, i: Inputs): ChartData | null {
     return {
       type: "bearing-comparison",
       data: {
-        methods: results.map(r => ({ name: r.name, ultimate: r.ultimate, allowable: r.allowable })),
+        methods: results.map(r => ({ name: r.method || r.name, ultimate: r.ultimate, allowable: r.allowable })),
         safetyFactor: base.safetyFactor,
       },
     };
@@ -229,7 +430,7 @@ function buildBearingChart(method: string, i: Inputs): ChartData | null {
   return {
     type: "bearing-comparison",
     data: {
-      methods: [{ name: r.method, ultimate: r.ultimate, allowable: r.allowable }],
+      methods: [{ name: r.method || method.split(" ")[0], ultimate: r.ultimate, allowable: r.allowable }],
       safetyFactor: base.safetyFactor,
     },
   };
@@ -257,24 +458,6 @@ function buildSettlementChart(method: string, i: Inputs): ChartData | null {
         },
       };
     }
-  }
-  if (method.includes("Schmertmann")) {
-    const r = schmertmannSettlement({
-      width: n(i, "width", 2), length: n(i, "length", 2),
-      depth: n(i, "depth", 1), pressure: n(i, "pressure", 100),
-      gamma: n(i, "gamma", 18),
-      layers: [{ depthTop: 0, depthBottom: n(i, "layerThickness", 4), Es: n(i, "Es", 10000) }],
-    });
-    const B = n(i, "width", 2);
-    const isSquare = true;
-    return {
-      type: "schmertmann",
-      data: {
-        contributions: r.layerContributions.map(c => ({ depth: c.depth, Iz: c.Iz, Es: c.Es })),
-        width: B,
-        zMax: isSquare ? 2 * B : 4 * B,
-      },
-    };
   }
   return null;
 }
@@ -318,7 +501,7 @@ function buildSlopeChart(method: string, i: Inputs): ChartData {
       center: r.criticalCenter,
       radius: r.criticalRadius,
       FS: r.FS,
-      slices: r.slices.map(s => ({ x: s.x, width: s.width })),
+      slices: r.slices?.map(s => ({ x: s.x, width: s.width })) || [],
     },
   };
 }
@@ -344,28 +527,21 @@ function buildExcavationChart(i: Inputs): ChartData {
   };
 }
 
-function buildLiquefactionChart(i: Inputs): ChartData | null {
-  const layers = (i.layers as any) || [
-    { depth: 2, N: 8, finesContent: 15 },
-    { depth: 5, N: 12, finesContent: 10 },
-    { depth: 8, N: 18, finesContent: 5 },
-    { depth: 12, N: 25, finesContent: 5 },
-  ];
-  const r = evaluateLiquefaction({
-    layers,
-    magnitude: n(i, "magnitude", 7.5),
-    amax: n(i, "amax", 0.4),
-    waterTableDepth: n(i, "waterTableDepth", 2),
-    gamma: n(i, "gamma", 18),
-    gammaSat: n(i, "gammaSat", 20),
-  });
+function buildLiquefactionChart(i: Inputs, results?: Record<string, any>): ChartData | null {
+  const layerDetails = results?._layerDetails;
+  if (!layerDetails || !Array.isArray(layerDetails)) return null;
+
   return {
     type: "liquefaction",
     data: {
-      layers: r.layers.map(l => ({
-        depth: l.depth, CSR: l.CSR, CRR: l.CRR, FS: l.FS, status: l.status,
+      layers: layerDetails.map((l: any) => ({
+        depth: l.depth,
+        CSR: l.CSR,
+        CRR: l.CRR,
+        FS: l.FS,
+        status: l.status,
       })),
-      LPI: r.LPI,
+      LPI: results?.LPI || 0,
     },
   };
 }
@@ -377,47 +553,42 @@ function buildConsolidationChart(method: string, i: Inputs): ChartData | null {
       layerThickness: n(i, "layerThickness", 10), spacing: n(i, "spacing", 1.5),
       pattern: (i.pattern as any) || "triangular",
       drainDiameter: n(i, "drainDiameter", 0.05),
-      mandelDiameter: i.mandelDiameter ? n(i, "mandelDiameter", 0.15) : undefined,
       targetDegree: n(i, "targetDegree", 90),
-      totalSettlement: i.totalSettlement ? n(i, "totalSettlement", 0.5) : undefined,
     });
     return {
       type: "consolidation-utv",
       data: {
-        curve: r.comparison.map(c => ({ Tv: c.time, U: c.U_noPVD })),
-        pvdCurve: r.comparison.map(c => ({ Tv: c.time, U: c.U_PVD })),
+        curve: r.comparison?.map((c: any) => ({ Tv: c.time, U: c.U_noPVD })) || [],
+        pvdCurve: r.comparison?.map((c: any) => ({ Tv: c.time, U: c.U_PVD })) || [],
       },
     };
   }
   const r = consolidationTime({
     cv: n(i, "cv", 2), drainagePath: n(i, "drainagePath", 2),
     targetDegree: n(i, "targetDegree", 90),
-    totalSettlement: i.totalSettlement ? n(i, "totalSettlement", 0.5) : undefined,
   });
   return {
     type: "settlement-time",
     data: {
-      curve: r.timeCurve.map(c => ({ time: c.time, U: c.U, settlement: c.settlement })),
-      totalSettlement: i.totalSettlement ? n(i, "totalSettlement", 0.5) * 1000 : undefined,
+      curve: r.timeCurve?.map((c: any) => ({ time: c.time, U: c.U, settlement: c.settlement })) || [],
     },
   };
 }
 
 function buildFieldTestChart(method: string, i: Inputs): ChartData | null {
   if (method.includes("Efektif") || method.includes("Gerilme")) {
-    const layers = (i.layers as any) || [
+    const layers = i.layers || [
       { thickness: 3, gamma: 17 },
       { thickness: 4, gamma: 18, gammaSat: 20 },
-      { thickness: 5, gamma: 19, gammaSat: 21 },
     ];
-    const r = stressProfile({ layers, waterTableDepth: n(i, "waterTableDepth", 3), surcharge: n(i, "surcharge", 0) });
+    const r = stressProfile({ layers, waterTableDepth: n(i, "waterTableDepth", 3) });
     const boundaries: number[] = [];
     let d = 0;
     for (const l of layers) { d += l.thickness; boundaries.push(d); }
     return {
       type: "stress-profile",
       data: {
-        profile: r.profile.map(p => ({
+        profile: r.profile.map((p: any) => ({
           depth: p.depth, totalStress: p.totalStress,
           porePressure: p.porePressure, effectiveStress: p.effectiveStress,
         })),
@@ -426,30 +597,15 @@ function buildFieldTestChart(method: string, i: Inputs): ChartData | null {
       },
     };
   }
-  if (method.includes("SPT")) {
-    const points = (i.sptPoints as any) || [
-      { depth: 1.5, N: 5, effectiveStress: 27, soilType: "sand" },
-      { depth: 3, N: 10, effectiveStress: 54, soilType: "sand" },
-      { depth: 6, N: 18, effectiveStress: 100, soilType: "sand" },
-      { depth: 9, N: 25, effectiveStress: 145, soilType: "sand" },
-      { depth: 12, N: 32, effectiveStress: 190, soilType: "sand" },
-    ];
-    const results = points.map((p: any) => {
-      const r = sptCorrelations({ N: p.N, depth: p.depth, effectiveStress: p.effectiveStress, soilType: p.soilType || "sand" });
-      return { depth: p.depth, N60: r.N60, N1_60: r.N1_60 };
-    });
-    return { type: "spt-profile", data: { points: results } };
-  }
   return null;
 }
 
 function buildIndexTestChart(method: string, i: Inputs): ChartData | null {
   if (method.includes("Dane")) {
-    const data = (i.grainSizeData as any) || [
-      { sieveSize: 75, percentPassing: 100 }, { sieveSize: 25, percentPassing: 92 },
-      { sieveSize: 4.75, percentPassing: 78 }, { sieveSize: 2, percentPassing: 65 },
-      { sieveSize: 0.6, percentPassing: 48 }, { sieveSize: 0.3, percentPassing: 32 },
-      { sieveSize: 0.15, percentPassing: 20 }, { sieveSize: 0.075, percentPassing: 12 },
+    const data = i.grainSizeData || [
+      { sieveSize: 75, percentPassing: 100 },
+      { sieveSize: 4.75, percentPassing: 78 },
+      { sieveSize: 0.075, percentPassing: 12 },
     ];
     const r = grainSizeAnalysis({ data });
     return {
@@ -462,18 +618,18 @@ function buildIndexTestChart(method: string, i: Inputs): ChartData | null {
 
 function buildPhaseChart(method: string, i: Inputs): ChartData | null {
   if (method.includes("Proctor")) {
-    const points = (i.proctorPoints as any) || [
-      { waterContent: 8, dryDensity: 17.2 }, { waterContent: 10, dryDensity: 18.1 },
-      { waterContent: 12, dryDensity: 18.8 }, { waterContent: 14, dryDensity: 18.5 },
+    const points = i.proctorPoints || [
+      { waterContent: 8, dryDensity: 17.2 },
+      { waterContent: 12, dryDensity: 18.8 },
       { waterContent: 16, dryDensity: 17.9 },
     ];
     const r = proctorAnalysis({ points, Gs: n(i, "Gs", 2.65), testType: (i.testType as any) || "standard" });
     return {
       type: "proctor",
       data: {
-        points, fitCurve: r.fitCurve, zavCurve: r.zavCurve,
+        points, fitCurve: r.fitCurve || [], zavCurve: r.zavCurve || [],
         optimumWaterContent: r.optimumWaterContent, maxDryDensity: r.maxDryDensity,
-        gammaD95: r.range95.gammaD95,
+        gammaD95: r.range95?.gammaD95,
       },
     };
   }
@@ -503,10 +659,9 @@ function buildPileChart(method: string, i: Inputs): ChartData | null {
   const pileInput = {
     diameter: n(i, "diameter", 0.6), length: n(i, "length", 15),
     pileType: (i.pileType as any) || "driven",
-    layers: (i.layers as any) || [
+    layers: i.layers || [
       { depthTop: 0, depthBottom: 5, soilType: "clay", cu: 40, gamma: 18 },
       { depthTop: 5, depthBottom: 10, soilType: "sand", frictionAngle: 32, gamma: 19 },
-      { depthTop: 10, depthBottom: 15, soilType: "sand", frictionAngle: 35, gamma: 20, N: 30 },
     ],
     safetyFactor: n(i, "safetyFactor", 2.5),
   };
@@ -515,11 +670,11 @@ function buildPileChart(method: string, i: Inputs): ChartData | null {
   return {
     type: "pile-load-transfer",
     data: {
-      layers: r.layerDetails.map(l => ({
-        depthTop: parseFloat(l.depth.split("-")[0]),
-        depthBottom: parseFloat(l.depth.split("-")[1]),
+      layers: r.layerDetails?.map((l: any) => ({
+        depthTop: parseFloat(l.depth?.split("-")[0] || "0"),
+        depthBottom: parseFloat(l.depth?.split("-")[1] || "0"),
         type: l.type, qs: l.qs, contribution: l.contribution,
-      })),
+      })) || [],
       tipCapacity: r.tipCapacity, shaftCapacity: r.shaftCapacity,
       ultimate: r.ultimate, pileLength: pileInput.length, pileDiameter: pileInput.diameter,
     },
@@ -539,10 +694,12 @@ function flatten(obj: any): Record<string, any> {
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v === null || v === undefined) continue;
-    if (Array.isArray(v) && v.length > 20) continue; // büyük dizileri atla
+    if (Array.isArray(v) && v.length > 20) continue;
     if (typeof v === "object" && !Array.isArray(v)) {
       for (const [k2, v2] of Object.entries(v as any)) {
-        if (typeof v2 !== "object") out[`${k}.${k2}`] = v2;
+        if (typeof v2 !== "object" || (Array.isArray(v2) && v2.length <= 20)) {
+          out[`${k}.${k2}`] = v2;
+        }
       }
     } else {
       out[k] = v;
